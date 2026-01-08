@@ -3,526 +3,403 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DEEP DUNGEON</title>
+    <title>AI SYMBIOSIS</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Teko:wght@300;600&family=JetBrains+Mono:wght@400;800&display=swap');
 
         :root {
-            --bg: #111;
-            --ui: #222;
-            --text: #eee;
-            --accent: #d4af37;
+            --bg: #0a0a12;
+            --main: #00f0ff;
+            --sec: #ff0055;
+            --gold: #ffe600;
         }
 
         body {
             margin: 0; overflow: hidden; background: var(--bg);
-            font-family: 'VT323', monospace; color: var(--text);
+            font-family: 'Teko', sans-serif; color: white;
             user-select: none; -webkit-tap-highlight-color: transparent;
-            display: flex; flex-direction: column; height: 100vh;
         }
 
-        /* SCREENS */
-        .screen {
-            position: fixed; inset: 0; background: var(--bg);
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 10;
-        }
-        .screen.active { display: flex; }
+        /* LAYERS */
+        #game { position: fixed; inset: 0; z-index: 1; }
+        #ui { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
 
-        /* MENU */
-        h1 { font-size: 40px; color: var(--accent); margin-bottom: 20px; text-shadow: 2px 2px 0 #000; }
-        .hero-select { display: flex; gap: 10px; margin-bottom: 20px; }
-        .hero-card {
-            border: 2px solid #444; padding: 10px; border-radius: 8px; cursor: pointer;
-            text-align: center; width: 80px; transition: 0.2s;
-        }
-        .hero-card.selected { border-color: var(--accent); background: rgba(212, 175, 55, 0.1); }
-        .hero-icon { font-size: 30px; }
-
-        /* GAME UI */
-        #game-ui {
+        /* HUD */
+        .hud-top {
             position: absolute; top: 0; left: 0; width: 100%; padding: 10px;
-            display: flex; justify-content: space-between; z-index: 5;
-            background: rgba(0,0,0,0.8); border-bottom: 1px solid #333;
+            display: flex; justify-content: space-between;
+            background: linear-gradient(180deg, rgba(0,0,0,0.9), transparent);
         }
-        .bar-box { width: 100px; height: 10px; background: #333; margin-top: 5px; }
-        .hp-fill { height: 100%; background: #e74c3c; width: 100%; transition: width 0.2s; }
-        .xp-fill { height: 100%; background: #3498db; width: 0%; transition: width 0.2s; }
+        .stat-box { display: flex; flex-direction: column; }
+        .val { font-size: 24px; font-weight: bold; line-height: 1; }
+        .lbl { font-size: 12px; opacity: 0.7; font-family: 'JetBrains Mono'; }
 
-        /* CANVAS */
-        #canvas-container { flex: 1; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; background: #000; }
-        canvas { image-rendering: pixelated; }
+        /* AI CHAT */
+        .ai-log {
+            position: absolute; bottom: 100px; left: 10px; width: 80%;
+            font-family: 'JetBrains Mono'; font-size: 12px;
+            color: var(--main); text-shadow: 0 0 5px var(--main);
+            pointer-events: none; opacity: 0.8;
+        }
+        .ai-msg { margin-bottom: 5px; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* COMBO METER */
+        .combo-box {
+            position: absolute; top: 80px; left: 20px;
+            font-size: 30px; font-style: italic; color: var(--gold);
+            opacity: 0; transition: 0.2s; text-shadow: 5px 5px 0 #000;
+        }
+        .combo-box.active { opacity: 1; transform: scale(1.2); }
 
         /* CONTROLS */
-        .d-pad {
-            position: absolute; bottom: 20px; width: 100%; height: 180px;
-            display: flex; justify-content: center; align-items: center;
-            z-index: 5; pointer-events: none;
+        .dock {
+            position: absolute; bottom: 20px; width: 100%;
+            display: flex; justify-content: center; gap: 10px; pointer-events: auto;
         }
-        .pad-row { display: flex; justify-content: center; width: 100%; }
-        .pad-btn {
-            width: 60px; height: 60px; background: rgba(255,255,255,0.1);
-            border: 2px solid rgba(255,255,255,0.2); border-radius: 10px;
-            margin: 5px; pointer-events: auto; display: flex;
-            align-items: center; justify-content: center; font-size: 24px;
+        .btn {
+            background: rgba(0, 20, 30, 0.9); border: 1px solid #333;
+            color: #fff; padding: 10px 15px; border-radius: 4px;
+            font-family: 'JetBrains Mono'; font-weight: bold; font-size: 12px;
+            cursor: pointer; box-shadow: 0 4px 0 #000; transition: 0.1s;
         }
-        .pad-btn:active { background: rgba(255,255,255,0.3); }
+        .btn:active { transform: translateY(4px); box-shadow: 0 0 0 #000; }
+        .btn-gold { border-color: var(--gold); color: var(--gold); }
+        .btn-ai { border-color: var(--main); color: var(--main); }
+
+        /* MODALS */
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 50;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            pointer-events: auto;
+        }
+        .gacha-box {
+            width: 150px; height: 150px; border: 2px solid var(--main);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 50px; animation: spin 0.5s infinite linear;
+            margin-bottom: 20px; display: none;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
         
-        .action-btn {
-            position: absolute; bottom: 40px; right: 20px;
-            width: 70px; height: 70px; border-radius: 50%;
-            background: rgba(212, 175, 55, 0.2); border: 2px solid var(--accent);
-            color: var(--accent); font-size: 14px; pointer-events: auto;
-            display: flex; align-items: center; justify-content: center; font-weight: bold;
-        }
-
-        /* LOG */
-        #log {
-            position: absolute; bottom: 220px; left: 10px; width: 90%;
-            height: 60px; pointer-events: none; overflow: hidden;
-            font-size: 14px; text-shadow: 1px 1px 0 #000;
-            display: flex; flex-direction: column-reverse;
-        }
-        .log-msg { margin-top: 2px; opacity: 0.8; }
-
-        /* MODAL */
-        .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 20; display:none; align-items:center; justify-content:center; flex-direction:column; }
-        .btn { padding: 10px 20px; background: var(--accent); color: #000; border: none; font-family: inherit; font-size: 18px; cursor: pointer; margin-top: 10px; }
+        /* DAMAGE TEXT */
+        .dmg-txt { position: absolute; font-weight: bold; animation: fly 0.8s forwards; pointer-events: none; }
+        @keyframes fly { 100% { transform: translateY(-100px); opacity: 0; } }
 
     </style>
 </head>
 <body>
 
-    <div id="menu" class="screen active">
-        <h1>DEEP DUNGEON</h1>
-        <div style="margin-bottom:20px">ВЫБЕРИ ГЕРОЯ:</div>
-        <div class="hero-select">
-            <div class="hero-card selected" onclick="selectClass('KNIGHT', this)">
-                <div class="hero-icon">🛡</div>
-                <div>KNIGHT</div>
+    <canvas id="game"></canvas>
+
+    <div id="ui">
+        <div class="hud-top">
+            <div class="stat-box">
+                <div class="val" style="color:var(--main)" id="ui-creds">0</div>
+                <div class="lbl">CREDITS</div>
             </div>
-            <div class="hero-card" onclick="selectClass('ROGUE', this)">
-                <div class="hero-icon">🗡</div>
-                <div>ROGUE</div>
+            <div class="stat-box" style="align-items: center;">
+                <div class="val" style="color:white" id="ui-hp">100%</div>
+                <div class="lbl" id="ui-lvl">SECTOR 1</div>
             </div>
-            <div class="hero-card" onclick="selectClass('MAGE', this)">
-                <div class="hero-icon">🔥</div>
-                <div>MAGE</div>
+            <div class="stat-box" style="align-items: flex-end;">
+                <div class="val" style="color:var(--gold)" id="ui-neon">0</div>
+                <div class="lbl">NEON</div>
             </div>
         </div>
-        <div style="margin-bottom:20px; color:#aaa;" id="menu-stats">HP: 100 | ATK: 5</div>
-        <button class="btn" onclick="startGame()">START RUN</button>
-        <button class="btn" style="background:#444; color:#fff; margin-top:10px;" onclick="showShop()">SHOP</button>
+
+        <div class="combo-box" id="ui-combo">x1.0 COMBO!</div>
+
+        <div class="ai-log" id="ai-log">
+            <div class="ai-msg">> SYSTEM: Online.</div>
+        </div>
+
+        <div class="dock">
+            <button class="btn btn-ai" onclick="upgrade('ai')">AI CORE <br><span id="cost-ai" style="font-size:10px">100</span></button>
+            <button class="btn" onclick="upgrade('power')">WEAPON <br><span id="cost-pow" style="font-size:10px">100</span></button>
+            <button class="btn btn-gold" onclick="openGachaModal()">DATA BOX</button>
+        </div>
     </div>
 
-    <div id="game" class="screen">
-        <div id="game-ui">
-            <div>
-                <div id="ui-hp">HP 100/100</div>
-                <div class="bar-box"><div class="hp-fill" id="bar-hp"></div></div>
-            </div>
-            <div style="text-align:right">
-                <div id="ui-gold">💰 0</div>
-                <div style="font-size:12px; color:#aaa" id="ui-depth">FLOOR 1</div>
-            </div>
+    <div id="modal-gacha" class="modal">
+        <h1 style="color:var(--gold)">DATA ARCHIVE</h1>
+        <div class="gacha-box" id="gacha-anim">📦</div>
+        <div id="gacha-result" style="text-align:center; display:none">
+            <h2 id="item-name" style="color:var(--main)">...</h2>
+            <p id="item-buff" style="font-family:'JetBrains Mono'; color:#aaa">...</p>
         </div>
-
-        <div id="canvas-container">
-            <canvas id="cvs"></canvas>
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="btn btn-gold" onclick="pullGacha()">OPEN (50 NEON)</button>
+            <button class="btn" onclick="buyNeon()">BUY NEON</button>
+            <button class="btn" onclick="closeGacha()">CLOSE</button>
         </div>
-
-        <div id="log"></div>
-
-        <div class="d-pad">
-            <div style="display:flex; flex-direction:column; align-items:center;">
-                <div class="pad-btn" onclick="move(0, -1)">⬆️</div>
-                <div style="display:flex;">
-                    <div class="pad-btn" onclick="move(-1, 0)">⬅️</div>
-                    <div class="pad-btn" onclick="move(0, 1)">⬇️</div>
-                    <div class="pad-btn" onclick="move(1, 0)">➡️</div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="action-btn" onclick="playerAction()">ATTACK</div>
-    </div>
-
-    <div id="modal-shop" class="modal-bg">
-        <h2 style="color:gold">GEM SHOP</h2>
-        <button class="btn" onclick="buyGems(100, 50)">100 GEMS (50⭐)</button>
-        <button class="btn" onclick="buyGems(500, 200)">500 GEMS (200⭐)</button>
-        <button class="btn" style="background:#444; color:#fff" onclick="document.getElementById('modal-shop').style.display='none'">CLOSE</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // --- ENGINE CONFIG ---
-        const TILE = 32;
-        const VIEW_W = 11; // Tiles visible horizontally
-        const VIEW_H = 13; // Tiles visible vertically
-        
-        const cvs = document.getElementById('cvs');
+        // --- ENGINE ---
+        const cvs = document.getElementById('game');
         const ctx = cvs.getContext('2d');
-        
-        // --- ASSETS (EMOJI BASED FOR SPEED) ---
-        const SPRITES = {
-            wall: '#333',
-            floor: '#111',
-            player: '🛡',
-            enemy_slime: '🦠',
-            enemy_skel: '💀',
-            enemy_boss: '👹',
-            chest: '📦',
-            stairs: '🚪',
-            gold: '💰'
+        let w, h;
+
+        const state = {
+            credits: 0, neon: 0, level: 1,
+            hp: 500, maxHp: 500,
+            power: 10, aiLvl: 0,
+            combo: 0, lastHit: 0,
+            shake: 0
         };
 
-        // --- STATE ---
-        let heroClass = 'KNIGHT';
-        let player = { x:1, y:1, hp:100, maxHp:100, atk:5, gold:0, depth:1 };
-        let map = [];
-        let entities = [];
+        // OBJECTS
         let particles = [];
-        let mapW = 20, mapH = 20;
-        let camX = 0, camY = 0;
+        let weakPoints = []; // Critical hit targets
+        let lastAiAction = 0;
 
-        // --- SETUP ---
-        function initCanvas() {
-            cvs.width = TILE * VIEW_W;
-            cvs.height = TILE * VIEW_H;
-            ctx.font = `${TILE-4}px sans-serif`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-        }
+        function resize() { w = cvs.width = window.innerWidth; h = cvs.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
 
-        function selectClass(cls, el) {
-            heroClass = cls;
-            document.querySelectorAll('.hero-card').forEach(e => e.classList.remove('selected'));
-            el.classList.add('selected');
-            
-            let stats = "HP: 100 | ATK: 5";
-            if(cls === 'ROGUE') stats = "HP: 70 | ATK: 12 (CRIT)";
-            if(cls === 'MAGE') stats = "HP: 60 | ATK: 8 (RANGE)";
-            document.getElementById('menu-stats').innerText = stats;
-        }
-
-        function startGame() {
-            document.getElementById('menu').classList.remove('active');
-            document.getElementById('game').classList.add('active');
-            
-            // Set stats based on class
-            player.maxHp = heroClass === 'KNIGHT' ? 120 : (heroClass === 'ROGUE' ? 70 : 60);
-            player.hp = player.maxHp;
-            player.atk = heroClass === 'KNIGHT' ? 5 : (heroClass === 'ROGUE' ? 10 : 8);
-            player.gold = 0;
-            player.depth = 1;
-            
-            tg.sendData(JSON.stringify({act:'set_class', class:heroClass}));
-            initCanvas();
-            generateLevel();
-            loop();
-        }
-
-        // --- GENERATION (Simple Cellular Automata) ---
-        function generateLevel() {
-            mapW = 20 + player.depth * 2; // Bigger maps deeper
-            mapH = 20 + player.depth * 2;
-            map = [];
-            entities = [];
-            
-            // 1. Fill Wall
-            for(let y=0; y<mapH; y++) {
-                let row = [];
-                for(let x=0; x<mapW; x++) row.push(1);
-                map.push(row);
+        // --- AI LOGIC (AUTONOMOUS) ---
+        function aiTick() {
+            // AI Chat
+            if(Math.random() < 0.005) {
+                const msgs = [
+                    "Analyzing structure...", "Weakness detected.", "Faster, Operator!", 
+                    "Credits mining: optimal.", "System integrity: 99%"
+                ];
+                logAI(msgs[Math.floor(Math.random()*msgs.length)]);
             }
 
-            // 2. Carve Rooms (Random Walk)
-            let digX = Math.floor(mapW/2), digY = Math.floor(mapH/2);
-            player.x = digX; player.y = digY;
-            
-            let floorCount = 0;
-            let targetFloors = (mapW*mapH) * 0.4;
-            
-            while(floorCount < targetFloors) {
-                if(map[digY][digX] === 1) {
-                    map[digY][digX] = 0;
-                    floorCount++;
-                }
-                
-                // Random move
-                let dir = Math.floor(Math.random()*4);
-                if(dir===0 && digY>1) digY--;
-                if(dir===1 && digY<mapH-2) digY++;
-                if(dir===2 && digX>1) digX--;
-                if(dir===3 && digX<mapW-2) digX++;
-            }
-
-            // 3. Populate
-            for(let y=0; y<mapH; y++) {
-                for(let x=0; x<mapW; x++) {
-                    if(map[y][x] === 0 && (x!==player.x || y!==player.y)) {
-                        let roll = Math.random();
-                        if(roll < 0.05) spawnEntity('slime', x, y);
-                        else if(roll < 0.08 && player.depth > 2) spawnEntity('skel', x, y);
-                        else if(roll < 0.02) spawnEntity('chest', x, y);
-                    }
+            // AI Auto-Attack (Based on Level)
+            if(state.aiLvl > 0) {
+                const delay = Math.max(100, 2000 - (state.aiLvl * 100)); // Faster with level
+                if(Date.now() - lastAiAction > delay) {
+                    lastAiAction = Date.now();
+                    // AI hits visually
+                    createHit(state.power * 0.5, w/2 + (Math.random()-0.5)*100, h/2 - 100, true);
                 }
             }
-            
-            // Exit
-            let exitSet = false;
-            while(!exitSet) {
-                let ex = Math.floor(Math.random()*mapW);
-                let ey = Math.floor(Math.random()*mapH);
-                if(map[ey][ex] === 0 && Math.abs(ex-player.x) > 5) {
-                    map[ey][ex] = 2; // Stairs
-                    exitSet = true;
-                }
-            }
-            
-            log(`Entered Floor ${player.depth}`);
-            updateUI();
         }
 
-        function spawnEntity(type, x, y) {
-            let hp = 20, atk = 3, icon = SPRITES.enemy_slime;
-            if(type === 'skel') { hp = 40; atk = 6; icon = SPRITES.enemy_skel; }
-            if(type === 'chest') { hp = 1; atk = 0; icon = SPRITES.chest; }
-            
-            // Scale with depth
-            hp += player.depth * 5;
-            atk += Math.floor(player.depth / 2);
-
-            entities.push({ type, x, y, hp, maxHp:hp, atk, icon });
-        }
-
-        // --- GAMEPLAY ---
-        function move(dx, dy) {
-            let tx = player.x + dx;
-            let ty = player.y + dy;
-
-            // Wall check
-            if(map[ty][tx] === 1) return;
-
-            // Entity check
-            let target = entities.find(e => e.x === tx && e.y === ty);
-            if(target) {
-                attack(target);
-                return;
-            }
-
-            // Stairs check
-            if(map[ty][tx] === 2) {
-                player.depth++;
-                generateLevel();
-                return;
-            }
-
-            player.x = tx;
-            player.y = ty;
-            tick();
-        }
-
-        function attack(target) {
-            if(target.type === 'chest') {
-                let loot = Math.floor(Math.random()*50) + 10;
-                player.gold += loot;
-                log(`Found ${loot} Gold!`);
-                spawnParticle(target.x, target.y, `+${loot}💰`, '#ff0');
-                // Remove chest
-                entities = entities.filter(e => e !== target);
-                updateUI();
-                return;
-            }
-
-            // Combat
-            let dmg = player.atk;
-            if(heroClass === 'ROGUE' && Math.random() < 0.3) {
-                dmg *= 2; // Crit
-                spawnParticle(target.x, target.y, "CRIT!", "#f00");
-            }
-            
-            target.hp -= dmg;
-            spawnParticle(target.x, target.y, `-${dmg}`, "#fff");
-            tg.HapticFeedback.impactOccurred('medium');
-
-            if(target.hp <= 0) {
-                let xp = 10;
-                let gold = Math.floor(Math.random()*10) + 5;
-                player.gold += gold;
-                entities = entities.filter(e => e !== target);
-                log(`Enemy slain! +${gold}g`);
-            }
-            
-            tick(); // Enemy turn
-        }
-
-        function playerAction() {
-            // Context sensitive button (Attack nearest or Heal)
-            // For now, simple AOE attack for Mage, or just wait
-            if(heroClass === 'MAGE') {
-                // Fireball around
-                entities.forEach(e => {
-                    if(Math.abs(e.x - player.x) <= 2 && Math.abs(e.y - player.y) <= 2) {
-                        e.hp -= player.atk * 0.8;
-                        spawnParticle(e.x, e.y, "🔥", "#f50");
-                    }
-                });
-                entities = entities.filter(e => e.hp > 0);
-                tick();
-            } else {
-                log("Wait...");
-                tick();
-            }
-        }
-
-        function tick() {
-            // Enemies move/attack
-            entities.forEach(e => {
-                if(e.type === 'chest') return;
-                
-                let dist = Math.abs(player.x - e.x) + Math.abs(player.y - e.y);
-                
-                if(dist === 1) {
-                    // Attack player
-                    player.hp -= e.atk;
-                    spawnParticle(player.x, player.y, `-${e.atk}`, "#f00");
-                    tg.HapticFeedback.notificationOccurred('warning');
-                    if(player.hp <= 0) gameOver();
-                } else if(dist < 5) {
-                    // Move towards player
-                    let dx = Math.sign(player.x - e.x);
-                    let dy = Math.sign(player.y - e.y);
-                    
-                    // Simple pathfinding (try x, then y)
-                    if(map[e.y][e.x+dx] !== 1 && !isBlocked(e.x+dx, e.y)) e.x += dx;
-                    else if(map[e.y+dy][e.x] !== 1 && !isBlocked(e.x, e.y+dy)) e.y += dy;
-                }
-            });
-            updateUI();
-        }
-
-        function isBlocked(x, y) {
-            if(x===player.x && y===player.y) return true;
-            return entities.some(e => e.x === x && e.y === y);
+        function logAI(text) {
+            const log = document.getElementById('ai-log');
+            const el = document.createElement('div');
+            el.className = 'ai-msg';
+            el.innerText = `> ${text}`;
+            log.appendChild(el);
+            if(log.children.length > 4) log.firstChild.remove();
         }
 
         // --- RENDER ---
-        function draw() {
-            // Clear
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, cvs.width, cvs.height);
+        function loop() {
+            ctx.fillStyle = "#0a0a12";
+            ctx.fillRect(0,0,w,h);
 
-            // Camera Center
-            camX = player.x * TILE - (cvs.width/2);
-            camY = player.y * TILE - (cvs.height/2);
+            // Shake
+            const shakeX = (Math.random()-0.5) * state.shake;
+            const shakeY = (Math.random()-0.5) * state.shake;
+            
+            ctx.save();
+            ctx.translate(shakeX, shakeY);
 
-            // Draw Map
-            let startCol = Math.floor(camX / TILE);
-            let endCol = startCol + VIEW_W + 1;
-            let startRow = Math.floor(camY / TILE);
-            let endRow = startRow + VIEW_H + 1;
+            // Draw Tower
+            const tx = w/2; const ty = h/2 + 50;
+            ctx.fillStyle = "#1a1a24";
+            ctx.fillRect(tx-60, ty-200, 120, 400); // Base
+            
+            // Health Glow
+            const hpP = state.hp / state.maxHp;
+            ctx.fillStyle = `rgba(0, 240, 255, ${hpP})`;
+            ctx.fillRect(tx-50, ty-190, 100, 380 * hpP); // Energy Core
+            
+            // Grid
+            ctx.strokeStyle = "rgba(255,255,255,0.1)";
+            ctx.beginPath();
+            for(let i=0; i<10; i++) {
+                ctx.moveTo(tx-60, ty-200 + i*40); ctx.lineTo(tx+60, ty-200+i*40);
+            }
+            ctx.stroke();
 
-            for(let y = startRow; y < endRow; y++) {
-                for(let x = startCol; x < endCol; x++) {
-                    if(y >= 0 && y < mapH && x >= 0 && x < mapW) {
-                        let tile = map[y][x];
-                        let px = x * TILE - camX;
-                        let py = y * TILE - camY;
-                        
-                        // Fog of War (Distance check)
-                        let dist = Math.sqrt((player.x-x)**2 + (player.y-y)**2);
-                        if(dist > 4) {
-                            // Darkness
-                            ctx.fillStyle = '#000';
-                            ctx.fillRect(px, py, TILE, TILE);
-                            continue;
-                        }
+            // Weak Points
+            weakPoints.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                ctx.strokeStyle = "#ff0055"; ctx.lineWidth = 3; ctx.stroke();
+                ctx.fillStyle = "rgba(255,0,85,0.3)"; ctx.fill();
+                p.r -= 0.2; // Shrink
+            });
 
-                        // Floor/Wall
-                        ctx.fillStyle = tile === 1 ? SPRITES.wall : SPRITES.floor;
-                        ctx.fillRect(px, py, TILE, TILE);
-                        
-                        // Stairs
-                        if(tile === 2) ctx.fillText(SPRITES.stairs, px+TILE/2, py+TILE/2);
-                    }
+            // Particles
+            particles.forEach((p,i) => {
+                p.x += p.vx; p.y += p.vy; p.vy += 0.5; p.life -= 0.02;
+                ctx.fillStyle = p.c;
+                ctx.globalAlpha = p.life;
+                ctx.fillRect(p.x, p.y, p.s, p.s);
+                if(p.life<=0) particles.splice(i,1);
+            });
+
+            ctx.restore();
+
+            // Logic
+            if(state.shake > 0) state.shake *= 0.9;
+            if(state.combo > 0 && Date.now() - state.lastHit > 1000) {
+                state.combo = 0;
+                document.getElementById('ui-combo').classList.remove('active');
+            }
+            
+            // Spawn Weak Point
+            if(Math.random() < 0.02 && weakPoints.length < 3) {
+                weakPoints.push({
+                    x: w/2 + (Math.random()-0.5)*100,
+                    y: h/2 - 100 + (Math.random()-0.5)*200,
+                    r: 20
+                });
+            }
+            // Cleanup Weak Points
+            weakPoints = weakPoints.filter(p => p.r > 0);
+
+            aiTick();
+            requestAnimationFrame(loop);
+        }
+
+        // --- INTERACTION ---
+        function createHit(dmg, x, y, isAuto=false) {
+            state.hp -= dmg;
+            state.shake = 5;
+            
+            // Visuals
+            spawnParticles(x, y, isAuto ? "#00f0ff" : "#fff");
+            spawnText(Math.floor(dmg), x, y, isAuto ? "#00f0ff" : "#fff");
+            
+            if(!isAuto) {
+                tg.HapticFeedback.impactOccurred('light');
+                state.lastHit = Date.now();
+                state.combo++;
+                if(state.combo > 5) {
+                    const el = document.getElementById('ui-combo');
+                    el.innerText = `x${(1 + state.combo/10).toFixed(1)} COMBO!`;
+                    el.classList.add('active');
                 }
             }
 
-            // Draw Entities
-            entities.forEach(e => {
-                let dist = Math.sqrt((player.x-e.x)**2 + (player.y-e.y)**2);
-                if(dist <= 4) {
-                    let px = e.x * TILE - camX + TILE/2;
-                    let py = e.y * TILE - camY + TILE/2;
-                    ctx.fillText(e.icon, px, py);
-                    
-                    // HP Bar
-                    ctx.fillStyle = "red";
-                    ctx.fillRect(px-10, py-14, 20, 3);
-                    ctx.fillStyle = "#0f0";
-                    ctx.fillRect(px-10, py-14, 20 * (e.hp/e.maxHp), 3);
+            if(state.hp <= 0) levelUp();
+            updateUI();
+        }
+
+        cvs.addEventListener('pointerdown', (e) => {
+            let dmg = state.power;
+            let isCrit = false;
+
+            // Check Weak Points
+            for(let i=0; i<weakPoints.length; i++) {
+                const p = weakPoints[i];
+                const dx = e.clientX - p.x;
+                const dy = e.clientY - p.y;
+                if(dx*dx + dy*dy < p.r*p.r * 2) { // Hit
+                    isCrit = true;
+                    dmg *= 5; // CRIT!
+                    weakPoints.splice(i, 1);
+                    spawnText("CRIT!", e.clientX, e.clientY - 30, "#ff0055", 30);
+                    tg.HapticFeedback.notificationOccurred('success');
+                    break;
                 }
-            });
+            }
 
-            // Draw Player
-            let pPx = player.x * TILE - camX + TILE/2;
-            let pPy = player.y * TILE - camY + TILE/2;
-            ctx.fillText(SPRITES.player, pPx, pPy);
+            // Combo Bonus
+            if(state.combo > 10) dmg *= 1.5;
 
-            // Particles (Floating Text)
-            particles.forEach((p, i) => {
-                p.y -= 1; p.life -= 0.05;
-                ctx.globalAlpha = p.life;
-                ctx.fillStyle = p.color;
-                ctx.fillText(p.txt, p.x - camX + TILE/2, p.y - camY);
-                ctx.globalAlpha = 1;
-                if(p.life <= 0) particles.splice(i, 1);
-            });
+            createHit(dmg, e.clientX, e.clientY);
+            state.credits++;
+        });
 
-            requestAnimationFrame(draw);
+        // --- SYSTEMS ---
+        function levelUp() {
+            state.level++;
+            state.credits += state.level * 100;
+            state.hp = state.maxHp = state.level * 500;
+            logAI("Target destroyed. Sector cleared.");
+            tg.sendData(JSON.stringify({act:'save', credits:state.credits, lvl:state.level}));
         }
 
-        function spawnParticle(x, y, txt, color) {
-            particles.push({x:x * TILE, y:y * TILE, txt, color, life:1.0});
+        function spawnParticles(x,y,c) {
+            for(let i=0; i<5; i++) {
+                particles.push({
+                    x:x, y:y, vx:(Math.random()-0.5)*10, vy:(Math.random()-0.5)*10,
+                    life:1, c:c, s:Math.random()*4+1
+                });
+            }
         }
 
-        function gameOver() {
-            alert(`YOU DIED! Gold saved: ${Math.floor(player.gold/2)}`);
-            tg.sendData(JSON.stringify({act:'end_run', gold:Math.floor(player.gold/2), depth:player.depth}));
-            location.reload();
-        }
-
-        function log(msg) {
-            const l = document.getElementById('log');
-            const d = document.createElement('div');
-            d.className = 'log-msg';
-            d.innerText = `> ${msg}`;
-            l.prepend(d);
-            if(l.children.length > 3) l.lastChild.remove();
+        function spawnText(txt, x, y, c, s=24) {
+            const el = document.createElement('div');
+            el.className = 'dmg-txt';
+            el.innerText = txt;
+            el.style.left = x+'px'; el.style.top = y+'px';
+            el.style.color = c; el.style.fontSize = s+'px';
+            document.body.appendChild(el);
+            setTimeout(()=>el.remove(), 800);
         }
 
         function updateUI() {
-            document.getElementById('ui-hp').innerText = `${player.hp}/${player.maxHp}`;
-            document.getElementById('bar-hp').style.width = `${(player.hp/player.maxHp)*100}%`;
-            document.getElementById('ui-gold').innerText = `💰 ${player.gold}`;
-            document.getElementById('ui-depth').innerText = `FLOOR ${player.depth}`;
+            document.getElementById('ui-creds').innerText = Math.floor(state.credits);
+            document.getElementById('ui-neon').innerText = state.neon;
+            document.getElementById('ui-lvl').innerText = `SECTOR ${state.level}`;
+            document.getElementById('ui-hp').innerText = Math.ceil((state.hp/state.maxHp)*100) + "%";
+            
+            document.getElementById('cost-pow').innerText = state.power * 50;
+            document.getElementById('cost-ai').innerText = (state.aiLvl+1) * 200;
         }
 
-        // --- SHOP ---
-        function showShop() { document.getElementById('modal-shop').style.display='flex'; }
-        function buyGems(amt, prc) {
-            tg.sendData(JSON.stringify({act:'buy_gems', amount:amt, price:prc}));
-        }
+        // --- MENU ACTIONS ---
+        window.upgrade = (type) => {
+            let cost = 0;
+            if(type === 'power') cost = state.power * 50;
+            if(type === 'ai') cost = (state.aiLvl + 1) * 200;
 
-        // --- INIT ---
+            if(state.credits >= cost) {
+                state.credits -= cost;
+                tg.sendData(JSON.stringify({act:'upgrade', stat:type, cost:cost}));
+                if(type === 'power') state.power += 5;
+                if(type === 'ai') { state.aiLvl++; logAI("AI Core upgraded. Efficiency increased."); }
+                updateUI();
+            } else {
+                tg.showAlert("Need Credits");
+            }
+        };
+
+        // --- GACHA ---
+        window.openGachaModal = () => document.getElementById('modal-gacha').style.display = 'flex';
+        window.closeGacha = () => document.getElementById('modal-gacha').style.display = 'none';
+        
+        window.pullGacha = () => {
+            if(state.neon < 50) { tg.showAlert("Need 50 Neon"); return; }
+            state.neon -= 50;
+            updateUI();
+            
+            // Anim
+            const box = document.getElementById('gacha-anim');
+            const res = document.getElementById('gacha-result');
+            box.style.display = 'flex';
+            res.style.display = 'none';
+            
+            tg.sendData(JSON.stringify({act:'gacha'}));
+        };
+        
+        window.buyNeon = () => {
+             tg.sendData(JSON.stringify({act:'donate', amount:100, price:45}));
+        };
+
+        // LISTENER
+        Telegram.WebApp.onEvent('message_received', (jsonStr) => {
+             // In real app, parse this properly. 
+             // Currently we rely on optimistic updates, but this listener would handle the "GACHA_WIN" response.
+        });
+
+        // INIT
+        loop();
         tg.sendData(JSON.stringify({act:'init'}));
-        initCanvas();
-        draw();
+        logAI("Connected. Awaiting input.");
 
     </script>
 </body>
