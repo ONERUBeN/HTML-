@@ -1,425 +1,406 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHITECT OS</title>
+    <title>AI SYMBIOSIS</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* [FONTS WITH CYRILLIC SUPPORT] */
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Oswald:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Teko:wght@300;600&family=JetBrains+Mono:wght@400;800&display=swap');
 
         :root {
-            --c-void: #050505;
-            --c-panel: rgba(15, 20, 25, 0.95);
-            --c-accent: #00ff9d; /* Matrix Green */
-            --c-alert: #ff003c;  /* Cyber Red */
-            --c-rare: #bd00ff;   /* Neon Purple */
-            --c-text: #e0e0e0;
-            --font-head: 'Oswald', sans-serif;       /* Заголовки */
-            --font-code: 'JetBrains Mono', monospace; /* Цифры и код */
+            --bg: #0a0a12;
+            --main: #00f0ff;
+            --sec: #ff0055;
+            --gold: #ffe600;
         }
-
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 
         body {
-            margin: 0; background: var(--c-void); color: var(--c-text);
-            font-family: var(--font-head); overflow: hidden; height: 100vh;
-            display: flex; flex-direction: column;
-            perspective: 1000px;
+            margin: 0; overflow: hidden; background: var(--bg);
+            font-family: 'Teko', sans-serif; color: white;
+            user-select: none; -webkit-tap-highlight-color: transparent;
         }
 
-        /* [FX] */
-        #bg-canvas { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.2; }
-        .vignette { position: fixed; inset: 0; background: radial-gradient(circle, transparent 50%, #000 100%); pointer-events: none; z-index: 0; }
-        .scanline { position: fixed; top: 0; left: 0; width: 100%; height: 2px; background: rgba(255,255,255,0.1); animation: scan 4s linear infinite; z-index: 999; pointer-events: none; }
-        @keyframes scan { 0% { top: -10%; } 100% { top: 110%; } }
+        /* LAYERS */
+        #game { position: fixed; inset: 0; z-index: 1; }
+        #ui { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
 
-        /* [HEADER] */
-        .hud {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 12px 15px; background: var(--c-panel);
-            border-bottom: 2px solid var(--c-accent);
-            box-shadow: 0 0 15px rgba(0, 255, 157, 0.1);
-            z-index: 50; backdrop-filter: blur(5px);
+        /* HUD */
+        .hud-top {
+            position: absolute; top: 0; left: 0; width: 100%; padding: 10px;
+            display: flex; justify-content: space-between;
+            background: linear-gradient(180deg, rgba(0,0,0,0.9), transparent);
         }
-        .user-block h1 { margin: 0; font-size: 20px; letter-spacing: 1px; text-transform: uppercase; color: #fff; }
-        .user-block p { margin: 0; font-family: var(--font-code); font-size: 10px; color: var(--c-accent); }
+        .stat-box { display: flex; flex-direction: column; }
+        .val { font-size: 24px; font-weight: bold; line-height: 1; }
+        .lbl { font-size: 12px; opacity: 0.7; font-family: 'JetBrains Mono'; }
+
+        /* AI CHAT */
+        .ai-log {
+            position: absolute; bottom: 100px; left: 10px; width: 80%;
+            font-family: 'JetBrains Mono'; font-size: 12px;
+            color: var(--main); text-shadow: 0 0 5px var(--main);
+            pointer-events: none; opacity: 0.8;
+        }
+        .ai-msg { margin-bottom: 5px; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* COMBO METER */
+        .combo-box {
+            position: absolute; top: 80px; left: 20px;
+            font-size: 30px; font-style: italic; color: var(--gold);
+            opacity: 0; transition: 0.2s; text-shadow: 5px 5px 0 #000;
+        }
+        .combo-box.active { opacity: 1; transform: scale(1.2); }
+
+        /* CONTROLS */
+        .dock {
+            position: absolute; bottom: 20px; width: 100%;
+            display: flex; justify-content: center; gap: 10px; pointer-events: auto;
+        }
+        .btn {
+            background: rgba(0, 20, 30, 0.9); border: 1px solid #333;
+            color: #fff; padding: 10px 15px; border-radius: 4px;
+            font-family: 'JetBrains Mono'; font-weight: bold; font-size: 12px;
+            cursor: pointer; box-shadow: 0 4px 0 #000; transition: 0.1s;
+        }
+        .btn:active { transform: translateY(4px); box-shadow: 0 0 0 #000; }
+        .btn-gold { border-color: var(--gold); color: var(--gold); }
+        .btn-ai { border-color: var(--main); color: var(--main); }
+
+        /* MODALS */
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 50;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            pointer-events: auto;
+        }
+        .gacha-box {
+            width: 150px; height: 150px; border: 2px solid var(--main);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 50px; animation: spin 0.5s infinite linear;
+            margin-bottom: 20px; display: none;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
         
-        .resource-block { text-align: right; }
-        .res-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-        .res-val { font-family: var(--font-code); font-weight: bold; font-size: 16px; }
-        .res-label { font-size: 10px; color: #888; font-family: var(--font-code); }
-
-        /* [NAV] */
-        .nav-deck {
-            display: flex; background: #080808; border-top: 1px solid #333;
-            z-index: 50; padding-bottom: env(safe-area-inset-bottom);
-        }
-        .nav-btn {
-            flex: 1; padding: 15px 0; text-align: center;
-            color: #555; transition: 0.3s; cursor: pointer;
-            font-size: 14px; letter-spacing: 1px; font-weight: bold;
-            border-top: 2px solid transparent;
-        }
-        .nav-btn.active { color: var(--c-accent); border-top-color: var(--c-accent); background: linear-gradient(180deg, rgba(0,255,157,0.1), transparent); text-shadow: 0 0 8px var(--c-accent); }
-
-        /* [VIEWS] */
-        .viewport { flex: 1; position: relative; overflow: hidden; }
-        .view {
-            position: absolute; inset: 0; display: none; flex-direction: column;
-            padding: 15px; overflow-y: auto; opacity: 0; transition: opacity 0.3s;
-        }
-        .view.active { display: flex; opacity: 1; }
-
-        /* [CARDS] */
-        .card-stage { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; }
-        .card {
-            position: absolute; width: 92%; max-width: 400px; height: 62vh;
-            background: #111; border: 1px solid var(--c-accent); border-radius: 12px;
-            overflow: hidden; display: flex; flex-direction: column;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.8);
-            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-        .card-visual { width: 100%; height: 55%; position: relative; background: #000; }
-        .card-visual img { width: 100%; height: 100%; object-fit: cover; }
-        .card-data { padding: 15px; flex: 1; background: linear-gradient(180deg, #151515, #0a0a0a); position: relative; }
-        
-        .card-badge { 
-            position: absolute; top: -12px; right: 15px;
-            background: var(--c-accent); color: #000;
-            padding: 4px 8px; font-weight: bold; font-family: var(--font-code); font-size: 11px;
-            box-shadow: 0 0 10px var(--c-accent); text-transform: uppercase;
-        }
-        .card-title { margin: 5px 0; font-size: 22px; line-height: 1.1; }
-        .card-price { font-size: 28px; color: var(--c-accent); font-weight: bold; margin-bottom: 10px; font-family: var(--font-code); }
-        .card-meta { font-family: var(--font-code); font-size: 11px; color: #888; line-height: 1.6; }
-
-        /* [MARKET] */
-        .market-header { font-size: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; color: var(--c-accent); }
-        .market-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .item-slot {
-            background: rgba(255,255,255,0.03); border: 1px solid #333;
-            padding: 15px; border-radius: 6px; text-align: center;
-            transition: 0.2s; position: relative; overflow: hidden;
-        }
-        .item-slot:active { border-color: var(--c-accent); background: rgba(0,255,157,0.05); }
-        .item-name { font-size: 14px; margin-bottom: 5px; font-weight: bold; }
-        .item-price { font-family: var(--font-code); color: var(--c-accent); font-size: 14px; }
-
-        /* [CONTROLS] */
-        .controls { 
-            display: flex; gap: 20px; padding: 15px; justify-content: center; 
-            background: linear-gradient(to top, #000 20%, transparent);
-        }
-        .ctrl-btn {
-            width: 65px; height: 65px; border-radius: 50%;
-            background: rgba(10,10,10,0.9); border: 1px solid #444;
-            color: #fff; font-size: 22px; display: flex; justify-content: center; align-items: center;
-            backdrop-filter: blur(5px); box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            transition: 0.1s;
-        }
-        .ctrl-btn:active { transform: scale(0.95); border-color: #fff; }
-        .btn-primary { border-color: var(--c-accent); color: var(--c-accent); box-shadow: 0 0 15px rgba(0,255,157,0.2); }
-
-        /* [LOADER] */
-        #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .terminal-loader { border: 1px solid var(--c-accent); width: 200px; height: 6px; padding: 1px; margin-top: 10px; }
-        .terminal-fill { height: 100%; background: var(--c-accent); width: 0%; animation: load 1.5s ease-in-out forwards; }
-        @keyframes load { 100% { width: 100%; } }
+        /* DAMAGE TEXT */
+        .dmg-txt { position: absolute; font-weight: bold; animation: fly 0.8s forwards; pointer-events: none; }
+        @keyframes fly { 100% { transform: translateY(-100px); opacity: 0; } }
 
     </style>
 </head>
 <body>
 
-    <div id="loader">
-        <div style="font-family: var(--font-code); font-size: 12px; letter-spacing: 2px;" id="load-text">INITIALIZING...</div>
-        <div class="terminal-loader"><div class="terminal-fill"></div></div>
-    </div>
+    <canvas id="game"></canvas>
 
-    <canvas id="bg-canvas"></canvas>
-    <div class="scanline"></div>
-    <div class="vignette"></div>
-
-    <header class="hud">
-        <div class="user-block">
-            <h1 id="lbl-role">OPERATOR</h1>
-            <p>ID: <span id="user-id">...</span></p>
-        </div>
-        <div class="resource-block">
-            <div class="res-row">
-                <span class="res-val" id="res-creds" style="color:var(--c-accent)">0</span>
-                <span class="res-label" id="lbl-creds">CREDS</span>
+    <div id="ui">
+        <div class="hud-top">
+            <div class="stat-box">
+                <div class="val" style="color:var(--main)" id="ui-creds">0</div>
+                <div class="lbl">CREDITS</div>
             </div>
-            <div class="res-row">
-                <span class="res-val" id="res-energy">0/100</span>
-                <span class="res-label" id="lbl-nrg">NRG</span>
+            <div class="stat-box" style="align-items: center;">
+                <div class="val" style="color:white" id="ui-hp">100%</div>
+                <div class="lbl" id="ui-lvl">SECTOR 1</div>
             </div>
-        </div>
-    </header>
-
-    <div class="viewport">
-        <div id="view-radar" class="view active">
-            <div class="card-stage" id="stack"></div>
-            <div class="controls">
-                <div class="ctrl-btn" onclick="swipe('left')">✕</div>
-                <div class="ctrl-btn btn-primary" onclick="attemptHack()">⚡</div>
-                <div class="ctrl-btn" onclick="swipe('right')">♥</div>
+            <div class="stat-box" style="align-items: flex-end;">
+                <div class="val" style="color:var(--gold)" id="ui-neon">0</div>
+                <div class="lbl">NEON</div>
             </div>
         </div>
 
-        <div id="view-market" class="view">
-            <div class="market-header" id="lbl-market">BLACK MARKET</div>
-            <div class="market-grid" id="market-grid"></div>
+        <div class="combo-box" id="ui-combo">x1.0 COMBO!</div>
+
+        <div class="ai-log" id="ai-log">
+            <div class="ai-msg">> SYSTEM: Online.</div>
+        </div>
+
+        <div class="dock">
+            <button class="btn btn-ai" onclick="upgrade('ai')">AI CORE <br><span id="cost-ai" style="font-size:10px">100</span></button>
+            <button class="btn" onclick="upgrade('power')">WEAPON <br><span id="cost-pow" style="font-size:10px">100</span></button>
+            <button class="btn btn-gold" onclick="openGachaModal()">DATA BOX</button>
         </div>
     </div>
 
-    <nav class="nav-deck">
-        <div class="nav-btn active" onclick="switchView('radar')" id="nav-radar">RADAR</div>
-        <div class="nav-btn" onclick="switchView('market')" id="nav-market">MARKET</div>
-        <div class="nav-btn" onclick="switchView('profile')" id="nav-profile">PROFILE</div>
-    </nav>
+    <div id="modal-gacha" class="modal">
+        <h1 style="color:var(--gold)">DATA ARCHIVE</h1>
+        <div class="gacha-box" id="gacha-anim">📦</div>
+        <div id="gacha-result" style="text-align:center; display:none">
+            <h2 id="item-name" style="color:var(--main)">...</h2>
+            <p id="item-buff" style="font-family:'JetBrains Mono'; color:#aaa">...</p>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="btn btn-gold" onclick="pullGacha()">OPEN (50 NEON)</button>
+            <button class="btn" onclick="buyNeon()">BUY NEON</button>
+            <button class="btn" onclick="closeGacha()">CLOSE</button>
+        </div>
+    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // --- 🌐 СИСТЕМА ПЕРЕВОДА (LANGUAGE MATRIX) ---
-        const USER_LANG = tg.initDataUnsafe.user?.language_code || 'ru'; // Авто-определение
-        
-        const DICT = {
-            ru: {
-                loading: "ЗАГРУЗКА ЯДРА...",
-                role: "ОПЕРАТОР",
-                creds: "КРЕДИТЫ",
-                nrg: "ЭНЕРГИЯ",
-                nav_radar: "РАДАР",
-                nav_market: "РЫНОК",
-                nav_profile: "ПРОФИЛЬ",
-                market_title: "ЧЕРНЫЙ РЫНОК",
-                items: {
-                    battery: "БАТАРЕЯ",
-                    chip: "AI ЧИП",
-                    vip: "VIP ДОСТУП",
-                    data: "ДАТА-ФАЙЛ"
-                },
-                loc: ["Сектор 7", "Центр-Сити", "Старый Район", "Нео-Ош", "Элитный Квартал"],
-                types: ["Апартаменты", "Капсула", "Лофт", "Бункер", "Студия"],
-                meta: {
-                    sec: "БЕЗОПАСНОСТЬ",
-                    dist: "ДИСТАНЦИЯ",
-                    lvl: ["ВЫСОКАЯ", "НИЗКАЯ", "СРЕДНЯЯ"]
-                },
-                popup: {
-                    hack: "ВЗЛОМ УСПЕШЕН",
-                    hack_msg: "Данные сохранены (+20 XP)"
+        // --- ENGINE ---
+        const cvs = document.getElementById('game');
+        const ctx = cvs.getContext('2d');
+        let w, h;
+
+        const state = {
+            credits: 0, neon: 0, level: 1,
+            hp: 500, maxHp: 500,
+            power: 10, aiLvl: 0,
+            combo: 0, lastHit: 0,
+            shake: 0
+        };
+
+        // OBJECTS
+        let particles = [];
+        let weakPoints = []; // Critical hit targets
+        let lastAiAction = 0;
+
+        function resize() { w = cvs.width = window.innerWidth; h = cvs.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        // --- AI LOGIC (AUTONOMOUS) ---
+        function aiTick() {
+            // AI Chat
+            if(Math.random() < 0.005) {
+                const msgs = [
+                    "Analyzing structure...", "Weakness detected.", "Faster, Operator!", 
+                    "Credits mining: optimal.", "System integrity: 99%"
+                ];
+                logAI(msgs[Math.floor(Math.random()*msgs.length)]);
+            }
+
+            // AI Auto-Attack (Based on Level)
+            if(state.aiLvl > 0) {
+                const delay = Math.max(100, 2000 - (state.aiLvl * 100)); // Faster with level
+                if(Date.now() - lastAiAction > delay) {
+                    lastAiAction = Date.now();
+                    // AI hits visually
+                    createHit(state.power * 0.5, w/2 + (Math.random()-0.5)*100, h/2 - 100, true);
                 }
-            },
-            en: {
-                loading: "INITIALIZING CORE...",
-                role: "OPERATOR",
-                creds: "CREDS",
-                nrg: "ENERGY",
-                nav_radar: "RADAR",
-                nav_market: "MARKET",
-                nav_profile: "PROFILE",
-                market_title: "BLACK MARKET",
-                items: {
-                    battery: "BATTERY",
-                    chip: "AI CHIP",
-                    vip: "VIP PASS",
-                    data: "DATA SHARD"
-                },
-                loc: ["Sector 7", "City Center", "Old Town", "Neo-Market", "Elite District"],
-                types: ["Apartment", "Capsule", "Loft", "Bunker", "Studio"],
-                meta: {
-                    sec: "SECURITY",
-                    dist: "DISTANCE",
-                    lvl: ["HIGH", "LOW", "MID"]
-                },
-                popup: {
-                    hack: "HACK SUCCESS",
-                    hack_msg: "Data secured (+20 XP)"
+            }
+        }
+
+        function logAI(text) {
+            const log = document.getElementById('ai-log');
+            const el = document.createElement('div');
+            el.className = 'ai-msg';
+            el.innerText = `> ${text}`;
+            log.appendChild(el);
+            if(log.children.length > 4) log.firstChild.remove();
+        }
+
+        // --- RENDER ---
+        function loop() {
+            ctx.fillStyle = "#0a0a12";
+            ctx.fillRect(0,0,w,h);
+
+            // Shake
+            const shakeX = (Math.random()-0.5) * state.shake;
+            const shakeY = (Math.random()-0.5) * state.shake;
+            
+            ctx.save();
+            ctx.translate(shakeX, shakeY);
+
+            // Draw Tower
+            const tx = w/2; const ty = h/2 + 50;
+            ctx.fillStyle = "#1a1a24";
+            ctx.fillRect(tx-60, ty-200, 120, 400); // Base
+            
+            // Health Glow
+            const hpP = state.hp / state.maxHp;
+            ctx.fillStyle = `rgba(0, 240, 255, ${hpP})`;
+            ctx.fillRect(tx-50, ty-190, 100, 380 * hpP); // Energy Core
+            
+            // Grid
+            ctx.strokeStyle = "rgba(255,255,255,0.1)";
+            ctx.beginPath();
+            for(let i=0; i<10; i++) {
+                ctx.moveTo(tx-60, ty-200 + i*40); ctx.lineTo(tx+60, ty-200+i*40);
+            }
+            ctx.stroke();
+
+            // Weak Points
+            weakPoints.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                ctx.strokeStyle = "#ff0055"; ctx.lineWidth = 3; ctx.stroke();
+                ctx.fillStyle = "rgba(255,0,85,0.3)"; ctx.fill();
+                p.r -= 0.2; // Shrink
+            });
+
+            // Particles
+            particles.forEach((p,i) => {
+                p.x += p.vx; p.y += p.vy; p.vy += 0.5; p.life -= 0.02;
+                ctx.fillStyle = p.c;
+                ctx.globalAlpha = p.life;
+                ctx.fillRect(p.x, p.y, p.s, p.s);
+                if(p.life<=0) particles.splice(i,1);
+            });
+
+            ctx.restore();
+
+            // Logic
+            if(state.shake > 0) state.shake *= 0.9;
+            if(state.combo > 0 && Date.now() - state.lastHit > 1000) {
+                state.combo = 0;
+                document.getElementById('ui-combo').classList.remove('active');
+            }
+            
+            // Spawn Weak Point
+            if(Math.random() < 0.02 && weakPoints.length < 3) {
+                weakPoints.push({
+                    x: w/2 + (Math.random()-0.5)*100,
+                    y: h/2 - 100 + (Math.random()-0.5)*200,
+                    r: 20
+                });
+            }
+            // Cleanup Weak Points
+            weakPoints = weakPoints.filter(p => p.r > 0);
+
+            aiTick();
+            requestAnimationFrame(loop);
+        }
+
+        // --- INTERACTION ---
+        function createHit(dmg, x, y, isAuto=false) {
+            state.hp -= dmg;
+            state.shake = 5;
+            
+            // Visuals
+            spawnParticles(x, y, isAuto ? "#00f0ff" : "#fff");
+            spawnText(Math.floor(dmg), x, y, isAuto ? "#00f0ff" : "#fff");
+            
+            if(!isAuto) {
+                tg.HapticFeedback.impactOccurred('light');
+                state.lastHit = Date.now();
+                state.combo++;
+                if(state.combo > 5) {
+                    const el = document.getElementById('ui-combo');
+                    el.innerText = `x${(1 + state.combo/10).toFixed(1)} COMBO!`;
+                    el.classList.add('active');
                 }
+            }
+
+            if(state.hp <= 0) levelUp();
+            updateUI();
+        }
+
+        cvs.addEventListener('pointerdown', (e) => {
+            let dmg = state.power;
+            let isCrit = false;
+
+            // Check Weak Points
+            for(let i=0; i<weakPoints.length; i++) {
+                const p = weakPoints[i];
+                const dx = e.clientX - p.x;
+                const dy = e.clientY - p.y;
+                if(dx*dx + dy*dy < p.r*p.r * 2) { // Hit
+                    isCrit = true;
+                    dmg *= 5; // CRIT!
+                    weakPoints.splice(i, 1);
+                    spawnText("CRIT!", e.clientX, e.clientY - 30, "#ff0055", 30);
+                    tg.HapticFeedback.notificationOccurred('success');
+                    break;
+                }
+            }
+
+            // Combo Bonus
+            if(state.combo > 10) dmg *= 1.5;
+
+            createHit(dmg, e.clientX, e.clientY);
+            state.credits++;
+        });
+
+        // --- SYSTEMS ---
+        function levelUp() {
+            state.level++;
+            state.credits += state.level * 100;
+            state.hp = state.maxHp = state.level * 500;
+            logAI("Target destroyed. Sector cleared.");
+            tg.sendData(JSON.stringify({act:'save', credits:state.credits, lvl:state.level}));
+        }
+
+        function spawnParticles(x,y,c) {
+            for(let i=0; i<5; i++) {
+                particles.push({
+                    x:x, y:y, vx:(Math.random()-0.5)*10, vy:(Math.random()-0.5)*10,
+                    life:1, c:c, s:Math.random()*4+1
+                });
+            }
+        }
+
+        function spawnText(txt, x, y, c, s=24) {
+            const el = document.createElement('div');
+            el.className = 'dmg-txt';
+            el.innerText = txt;
+            el.style.left = x+'px'; el.style.top = y+'px';
+            el.style.color = c; el.style.fontSize = s+'px';
+            document.body.appendChild(el);
+            setTimeout(()=>el.remove(), 800);
+        }
+
+        function updateUI() {
+            document.getElementById('ui-creds').innerText = Math.floor(state.credits);
+            document.getElementById('ui-neon').innerText = state.neon;
+            document.getElementById('ui-lvl').innerText = `SECTOR ${state.level}`;
+            document.getElementById('ui-hp').innerText = Math.ceil((state.hp/state.maxHp)*100) + "%";
+            
+            document.getElementById('cost-pow').innerText = state.power * 50;
+            document.getElementById('cost-ai').innerText = (state.aiLvl+1) * 200;
+        }
+
+        // --- MENU ACTIONS ---
+        window.upgrade = (type) => {
+            let cost = 0;
+            if(type === 'power') cost = state.power * 50;
+            if(type === 'ai') cost = (state.aiLvl + 1) * 200;
+
+            if(state.credits >= cost) {
+                state.credits -= cost;
+                tg.sendData(JSON.stringify({act:'upgrade', stat:type, cost:cost}));
+                if(type === 'power') state.power += 5;
+                if(type === 'ai') { state.aiLvl++; logAI("AI Core upgraded. Efficiency increased."); }
+                updateUI();
+            } else {
+                tg.showAlert("Need Credits");
             }
         };
 
-        // Функция перевода
-        const T = (key) => {
-            const dict = DICT[USER_LANG] || DICT['en'];
-            return dict[key] || DICT['en'][key];
-        }
+        // --- GACHA ---
+        window.openGachaModal = () => document.getElementById('modal-gacha').style.display = 'flex';
+        window.closeGacha = () => document.getElementById('modal-gacha').style.display = 'none';
         
-        // Перевод интерфейса при старте
-        function localize() {
-            document.getElementById('load-text').innerText = T('loading');
-            document.getElementById('lbl-role').innerText = T('role');
-            document.getElementById('lbl-creds').innerText = T('creds');
-            document.getElementById('lbl-nrg').innerText = T('nrg');
-            document.getElementById('nav-radar').innerText = T('nav_radar');
-            document.getElementById('nav-market').innerText = T('nav_market');
-            document.getElementById('nav-profile').innerText = T('nav_profile');
-            document.getElementById('lbl-market').innerText = T('market_title');
-        }
-        localize();
-
-        // --- AUDIO SYSTEM ---
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function beep(freq=1000, type='sine', vol=0.1, dur=0.1) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = type; osc.frequency.value = freq;
-            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+dur);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime+dur);
-        }
-
-        // --- BACKGROUND ---
-        const cvs = document.getElementById('bg-canvas');
-        const ctx = cvs.getContext('2d');
-        let w, h, particles = [];
+        window.pullGacha = () => {
+            if(state.neon < 50) { tg.showAlert("Need 50 Neon"); return; }
+            state.neon -= 50;
+            updateUI();
+            
+            // Anim
+            const box = document.getElementById('gacha-anim');
+            const res = document.getElementById('gacha-result');
+            box.style.display = 'flex';
+            res.style.display = 'none';
+            
+            tg.sendData(JSON.stringify({act:'gacha'}));
+        };
         
-        function resize() { w=cvs.width=window.innerWidth; h=cvs.height=window.innerHeight; }
-        window.addEventListener('resize', resize); resize();
+        window.buyNeon = () => {
+             tg.sendData(JSON.stringify({act:'donate', amount:100, price:45}));
+        };
 
-        function initParticles() {
-            particles = Array(40).fill().map(() => ({
-                x: Math.random()*w, y: Math.random()*h, v: Math.random()*2+0.5, s: Math.random()*2
-            }));
-        }
+        // LISTENER
+        Telegram.WebApp.onEvent('message_received', (jsonStr) => {
+             // In real app, parse this properly. 
+             // Currently we rely on optimistic updates, but this listener would handle the "GACHA_WIN" response.
+        });
 
-        function draw() {
-            ctx.clearRect(0,0,w,h);
-            ctx.fillStyle = '#00ff9d';
-            particles.forEach(p => {
-                p.y += p.v; if(p.y > h) p.y=0;
-                ctx.globalAlpha = p.s/4;
-                ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill();
-            });
-            requestAnimationFrame(draw);
-        }
-        initParticles(); draw();
+        // INIT
+        loop();
+        tg.sendData(JSON.stringify({act:'init'}));
+        logAI("Connected. Awaiting input.");
 
-        // --- LOGIC ---
-        const ITEMS = [
-            { id: "battery", name: "battery", price: 50 },
-            { id: "chip", name: "chip", price: 150 },
-            { id: "vip", name: "vip", price: 500 },
-            { id: "data", name: "data", price: 20 }
-        ];
-
-        // ГЕНЕРАТОР КАРТОЧЕК НА НУЖНОМ ЯЗЫКЕ
-        function generateCardData() {
-            const dict = DICT[USER_LANG] || DICT['en'];
-            const loc = dict.loc[Math.floor(Math.random() * dict.loc.length)];
-            const type = dict.types[Math.floor(Math.random() * dict.types.length)];
-            const sec = dict.meta.lvl[Math.floor(Math.random() * dict.meta.lvl.length)];
-            
-            return {
-                title: `${type} ${Math.floor(Math.random()*900)}`,
-                price: `¥ ${Math.floor(Math.random()*3000)+200}`,
-                loc: loc,
-                sec: sec,
-                img: `https://source.unsplash.com/random/600x800/?cyberpunk,room,neon&sig=${Date.now()}`,
-                score: Math.floor(Math.random()*40)+60
-            };
-        }
-
-        function init() {
-            setTimeout(() => {
-                document.getElementById('loader').style.opacity = '0';
-                setTimeout(() => document.getElementById('loader').remove(), 500);
-                beep(600, 'square', 0.1, 0.2);
-                renderCard();
-                renderMarket();
-                document.getElementById('user-id').innerText = tg.initDataUnsafe.user?.id || 'UNKNOWN';
-            }, 1500);
-        }
-
-        function renderCard() {
-            const stack = document.getElementById('stack');
-            stack.innerHTML = '';
-            
-            const data = generateCardData();
-            const dict = DICT[USER_LANG] || DICT['en'];
-
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-                <div class="card-visual">
-                    <img src="${data.img}" onerror="this.src='https://via.placeholder.com/600x800/000/0f0?text=NO+SIGNAL'">
-                </div>
-                <div class="card-data">
-                    <div class="card-badge">AI: ${data.score}</div>
-                    <h2 class="card-title">${data.title}</h2>
-                    <div class="card-price">${data.price}</div>
-                    <div class="card-meta">
-                        ${dict.meta.dist}: ${(Math.random()*5).toFixed(1)} KM<br>
-                        ${dict.loc}: ${data.loc}<br>
-                        ${dict.meta.sec}: <span style="color:var(--c-accent)">${data.sec}</span>
-                    </div>
-                </div>
-            `;
-            stack.appendChild(card);
-        }
-
-        function renderMarket() {
-            const grid = document.getElementById('market-grid');
-            const dict = DICT[USER_LANG] || DICT['en'];
-            
-            grid.innerHTML = ITEMS.map(i => `
-                <div class="item-slot" onclick="buy('${i.id}')">
-                    <div class="item-name">${dict.items[i.name]}</div>
-                    <div class="item-price">¥ ${i.price}</div>
-                </div>
-            `).join('');
-        }
-
-        function swipe(dir) {
-            const card = document.querySelector('.card');
-            if(!card) return;
-            
-            tg.HapticFeedback.impactOccurred('medium');
-            beep(dir==='right'?800:300, 'sine', 0.1);
-            
-            const x = dir==='right' ? 300 : -300;
-            const r = dir==='right' ? 20 : -20;
-            
-            card.style.transform = `translate(${x}px, 50px) rotate(${r}deg)`;
-            card.style.opacity = '0';
-            
-            setTimeout(() => renderCard(), 300);
-        }
-
-        function attemptHack() {
-            tg.HapticFeedback.impactOccurred('heavy');
-            beep(1200, 'sawtooth', 0.2);
-            const dict = DICT[USER_LANG] || DICT['en'];
-            
-            tg.showPopup({
-                title: dict.popup.hack,
-                message: dict.popup.hack_msg,
-                buttons: [{type: 'ok'}]
-            });
-            tg.sendData(JSON.stringify({action: 'hack_complete'}));
-            swipe('right');
-        }
-
-        function buy(itemId) {
-            tg.HapticFeedback.selectionChanged();
-            tg.sendData(JSON.stringify({action: 'buy', item: itemId}));
-        }
-
-        function switchView(id) {
-            beep(500, 'square', 0.05);
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('view-'+id).classList.add('active');
-            document.getElementById('nav-'+id).classList.add('active');
-        }
-
-        init();
     </script>
 </body>
 </html>
