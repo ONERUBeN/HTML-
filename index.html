@@ -3,263 +3,423 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Singularity</title>
+    <title>ARCHITECT OS</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        /* [FONTS WITH CYRILLIC SUPPORT] */
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Oswald:wght@400;700&display=swap');
 
         :root {
-            --h: 180; --s: 100%; --l: 50%;
-            --neon: hsl(var(--h), var(--s), var(--l));
-            --bg: #050505;
-            --panel: rgba(0, 20, 0, 0.9);
+            --c-void: #050505;
+            --c-panel: rgba(15, 20, 25, 0.95);
+            --c-accent: #00ff9d; /* Matrix Green */
+            --c-alert: #ff003c;  /* Cyber Red */
+            --c-rare: #bd00ff;   /* Neon Purple */
+            --c-text: #e0e0e0;
+            --font-head: 'Oswald', sans-serif;       /* Заголовки */
+            --font-code: 'JetBrains Mono', monospace; /* Цифры и код */
         }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 
         body {
-            background: var(--bg);
-            color: var(--neon);
-            font-family: 'Share Tech Mono', monospace;
-            margin: 0; overflow: hidden; height: 100vh;
+            margin: 0; background: var(--c-void); color: var(--c-text);
+            font-family: var(--font-head); overflow: hidden; height: 100vh;
             display: flex; flex-direction: column;
+            perspective: 1000px;
         }
 
-        /* CRT EFFECT OVERLAY */
-        .crt::before {
-            content: " ";
-            display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            z-index: 999; background-size: 100% 2px, 3px 100%; pointer-events: none;
+        /* [FX] */
+        #bg-canvas { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.2; }
+        .vignette { position: fixed; inset: 0; background: radial-gradient(circle, transparent 50%, #000 100%); pointer-events: none; z-index: 0; }
+        .scanline { position: fixed; top: 0; left: 0; width: 100%; height: 2px; background: rgba(255,255,255,0.1); animation: scan 4s linear infinite; z-index: 999; pointer-events: none; }
+        @keyframes scan { 0% { top: -10%; } 100% { top: 110%; } }
+
+        /* [HEADER] */
+        .hud {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 15px; background: var(--c-panel);
+            border-bottom: 2px solid var(--c-accent);
+            box-shadow: 0 0 15px rgba(0, 255, 157, 0.1);
+            z-index: 50; backdrop-filter: blur(5px);
         }
-
-        /* HUD */
-        .hud { padding: 10px; border-bottom: 2px solid var(--neon); background: rgba(0,0,0,0.8); display: flex; justify-content: space-between; z-index: 10; }
-        .bar-wrap { width: 100px; height: 8px; border: 1px solid var(--neon); margin-top: 5px; transform: skewX(-20deg); }
-        .bar { height: 100%; background: var(--neon); width: 80%; box-shadow: 0 0 10px var(--neon); transition: width 0.5s; }
-
-        /* TABS */
-        .tabs { display: flex; background: #111; z-index: 10; }
-        .tab { flex: 1; padding: 15px; text-align: center; border-bottom: 2px solid #333; color: #555; cursor: pointer; transition: 0.3s; }
-        .tab.active { border-color: var(--neon); color: var(--neon); text-shadow: 0 0 5px var(--neon); background: rgba(0, 255, 255, 0.1); }
-
-        /* SCREENS */
-        .screen { flex: 1; position: relative; display: none; overflow: hidden; }
-        .screen.active { display: flex; justify-content: center; align-items: center; }
-
-        /* CARD */
-        .card {
-            width: 85%; height: 60vh;
-            background: #000; border: 2px solid var(--neon);
-            position: absolute; display: flex; flex-direction: column;
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
-            transition: transform 0.3s, opacity 0.3s;
-        }
-        .card img { width: 100%; height: 50%; object-fit: cover; border-bottom: 1px solid var(--neon); filter: sepia(50%) hue-rotate(180deg) saturate(200%); }
-        .card-body { padding: 15px; }
-        .rarity { font-size: 20px; font-weight: bold; text-shadow: 0 0 10px currentColor; }
-
-        /* PROFILE */
-        .profile-stat { width: 80%; padding: 15px; border: 1px solid #333; margin-bottom: 10px; background: rgba(0,0,0,0.5); }
-
-        /* HACK GAME */
-        #hack-ui { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; }
-        .hack-track { width: 80%; height: 40px; border: 2px solid #fff; position: relative; border-radius: 5px; overflow: hidden; }
-        .hack-target { position: absolute; left: 40%; width: 20%; height: 100%; background: rgba(0,255,0,0.5); }
-        .hack-cursor { position: absolute; left: 0; width: 4px; height: 100%; background: red; animation: move 0.8s infinite alternate linear; }
-        @keyframes move { to { left: 100%; } }
-
-        /* CONTROLS */
-        .controls { padding: 20px; display: flex; gap: 20px; z-index: 10; }
-        .btn { flex: 1; height: 60px; border: 1px solid var(--neon); background: rgba(0,0,0,0.8); color: var(--neon); font-family: inherit; font-size: 20px; cursor: pointer; clip-path: polygon(10% 0, 100% 0, 100% 80%, 90% 100%, 0 100%, 0 20%); }
-        .btn:active { background: var(--neon); color: #000; }
+        .user-block h1 { margin: 0; font-size: 20px; letter-spacing: 1px; text-transform: uppercase; color: #fff; }
+        .user-block p { margin: 0; font-family: var(--font-code); font-size: 10px; color: var(--c-accent); }
         
-        .s-legendary { color: #ffa500; border-color: #ffa500; }
-        .s-rare { color: #00bfff; border-color: #00bfff; }
+        .resource-block { text-align: right; }
+        .res-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+        .res-val { font-family: var(--font-code); font-weight: bold; font-size: 16px; }
+        .res-label { font-size: 10px; color: #888; font-family: var(--font-code); }
+
+        /* [NAV] */
+        .nav-deck {
+            display: flex; background: #080808; border-top: 1px solid #333;
+            z-index: 50; padding-bottom: env(safe-area-inset-bottom);
+        }
+        .nav-btn {
+            flex: 1; padding: 15px 0; text-align: center;
+            color: #555; transition: 0.3s; cursor: pointer;
+            font-size: 14px; letter-spacing: 1px; font-weight: bold;
+            border-top: 2px solid transparent;
+        }
+        .nav-btn.active { color: var(--c-accent); border-top-color: var(--c-accent); background: linear-gradient(180deg, rgba(0,255,157,0.1), transparent); text-shadow: 0 0 8px var(--c-accent); }
+
+        /* [VIEWS] */
+        .viewport { flex: 1; position: relative; overflow: hidden; }
+        .view {
+            position: absolute; inset: 0; display: none; flex-direction: column;
+            padding: 15px; overflow-y: auto; opacity: 0; transition: opacity 0.3s;
+        }
+        .view.active { display: flex; opacity: 1; }
+
+        /* [CARDS] */
+        .card-stage { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; }
+        .card {
+            position: absolute; width: 92%; max-width: 400px; height: 62vh;
+            background: #111; border: 1px solid var(--c-accent); border-radius: 12px;
+            overflow: hidden; display: flex; flex-direction: column;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .card-visual { width: 100%; height: 55%; position: relative; background: #000; }
+        .card-visual img { width: 100%; height: 100%; object-fit: cover; }
+        .card-data { padding: 15px; flex: 1; background: linear-gradient(180deg, #151515, #0a0a0a); position: relative; }
+        
+        .card-badge { 
+            position: absolute; top: -12px; right: 15px;
+            background: var(--c-accent); color: #000;
+            padding: 4px 8px; font-weight: bold; font-family: var(--font-code); font-size: 11px;
+            box-shadow: 0 0 10px var(--c-accent); text-transform: uppercase;
+        }
+        .card-title { margin: 5px 0; font-size: 22px; line-height: 1.1; }
+        .card-price { font-size: 28px; color: var(--c-accent); font-weight: bold; margin-bottom: 10px; font-family: var(--font-code); }
+        .card-meta { font-family: var(--font-code); font-size: 11px; color: #888; line-height: 1.6; }
+
+        /* [MARKET] */
+        .market-header { font-size: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; color: var(--c-accent); }
+        .market-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .item-slot {
+            background: rgba(255,255,255,0.03); border: 1px solid #333;
+            padding: 15px; border-radius: 6px; text-align: center;
+            transition: 0.2s; position: relative; overflow: hidden;
+        }
+        .item-slot:active { border-color: var(--c-accent); background: rgba(0,255,157,0.05); }
+        .item-name { font-size: 14px; margin-bottom: 5px; font-weight: bold; }
+        .item-price { font-family: var(--font-code); color: var(--c-accent); font-size: 14px; }
+
+        /* [CONTROLS] */
+        .controls { 
+            display: flex; gap: 20px; padding: 15px; justify-content: center; 
+            background: linear-gradient(to top, #000 20%, transparent);
+        }
+        .ctrl-btn {
+            width: 65px; height: 65px; border-radius: 50%;
+            background: rgba(10,10,10,0.9); border: 1px solid #444;
+            color: #fff; font-size: 22px; display: flex; justify-content: center; align-items: center;
+            backdrop-filter: blur(5px); box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            transition: 0.1s;
+        }
+        .ctrl-btn:active { transform: scale(0.95); border-color: #fff; }
+        .btn-primary { border-color: var(--c-accent); color: var(--c-accent); box-shadow: 0 0 15px rgba(0,255,157,0.2); }
+
+        /* [LOADER] */
+        #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .terminal-loader { border: 1px solid var(--c-accent); width: 200px; height: 6px; padding: 1px; margin-top: 10px; }
+        .terminal-fill { height: 100%; background: var(--c-accent); width: 0%; animation: load 1.5s ease-in-out forwards; }
+        @keyframes load { 100% { width: 100%; } }
+
     </style>
 </head>
-<body class="crt">
+<body>
 
-    <div class="hud">
-        <div>
-            <div style="font-size:10px;">OPERATIVE</div>
-            <div class="bar-wrap"><div class="bar" style="width:75%"></div></div>
+    <div id="loader">
+        <div style="font-family: var(--font-code); font-size: 12px; letter-spacing: 2px;" id="load-text">INITIALIZING...</div>
+        <div class="terminal-loader"><div class="terminal-fill"></div></div>
+    </div>
+
+    <canvas id="bg-canvas"></canvas>
+    <div class="scanline"></div>
+    <div class="vignette"></div>
+
+    <header class="hud">
+        <div class="user-block">
+            <h1 id="lbl-role">OPERATOR</h1>
+            <p>ID: <span id="user-id">...</span></p>
         </div>
-        <div style="text-align:right">
-            <div style="font-size:10px;">CREDITS</div>
-            <div style="font-size:18px;">¥ 2,450</div>
+        <div class="resource-block">
+            <div class="res-row">
+                <span class="res-val" id="res-creds" style="color:var(--c-accent)">0</span>
+                <span class="res-label" id="lbl-creds">CREDS</span>
+            </div>
+            <div class="res-row">
+                <span class="res-val" id="res-energy">0/100</span>
+                <span class="res-label" id="lbl-nrg">NRG</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="viewport">
+        <div id="view-radar" class="view active">
+            <div class="card-stage" id="stack"></div>
+            <div class="controls">
+                <div class="ctrl-btn" onclick="swipe('left')">✕</div>
+                <div class="ctrl-btn btn-primary" onclick="attemptHack()">⚡</div>
+                <div class="ctrl-btn" onclick="swipe('right')">♥</div>
+            </div>
+        </div>
+
+        <div id="view-market" class="view">
+            <div class="market-header" id="lbl-market">BLACK MARKET</div>
+            <div class="market-grid" id="market-grid"></div>
         </div>
     </div>
 
-    <div class="tabs">
-        <div class="tab active" onclick="nav('radar')">RADAR</div>
-        <div class="tab" onclick="nav('profile')">ID</div>
-        <div class="tab" onclick="nav('clan')">CLAN</div>
-    </div>
-
-    <div id="radar" class="screen active">
-        <div id="stack"></div> </div>
-
-    <div id="profile" class="screen" style="flex-direction:column; padding-top:20px;">
-        <div class="profile-stat">
-            <h3>CLASS: NETRUNNER</h3>
-            <p>Level: 5</p>
-            <p>XP: 1250 / 2000</p>
-        </div>
-        <div class="profile-stat">
-            <h3>DAILY QUESTS</h3>
-            <p>[x] Hack 3 Terminals</p>
-            <p>[ ] Invite 1 Recruit</p>
-        </div>
-    </div>
-
-    <div id="clan" class="screen" style="flex-direction:column; align-items:center;">
-        <h2>NO SYNDICATE</h2>
-        <p style="color:#666; text-align:center; padding:20px;">Join a syndicate to boost credits gain by 10%.</p>
-        <button class="btn" style="width:200px;" onclick="createClan()">CREATE (¥1000)</button>
-    </div>
-
-    <div class="controls" id="ctrls">
-        <button class="btn" onclick="skip()">SKIP</button>
-        <button class="btn" style="border-color:#ff2a6d; color:#ff2a6d;" onclick="hack()">HACK</button>
-    </div>
-
-    <div id="hack-ui">
-        <h1 id="hack-msg">DECRYPTING...</h1>
-        <div class="hack-track">
-            <div class="hack-target"></div>
-            <div class="hack-cursor" id="cursor"></div>
-        </div>
-        <button class="btn" style="margin-top:20px; width:150px;" onclick="stopHack()">STOP</button>
-    </div>
+    <nav class="nav-deck">
+        <div class="nav-btn active" onclick="switchView('radar')" id="nav-radar">RADAR</div>
+        <div class="nav-btn" onclick="switchView('market')" id="nav-market">MARKET</div>
+        <div class="nav-btn" onclick="switchView('profile')" id="nav-profile">PROFILE</div>
+    </nav>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // --- SOUND ENGINE (Synthesizer) ---
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // --- 🌐 СИСТЕМА ПЕРЕВОДА (LANGUAGE MATRIX) ---
+        const USER_LANG = tg.initDataUnsafe.user?.language_code || 'ru'; // Авто-определение
         
-        function playSound(type) {
+        const DICT = {
+            ru: {
+                loading: "ЗАГРУЗКА ЯДРА...",
+                role: "ОПЕРАТОР",
+                creds: "КРЕДИТЫ",
+                nrg: "ЭНЕРГИЯ",
+                nav_radar: "РАДАР",
+                nav_market: "РЫНОК",
+                nav_profile: "ПРОФИЛЬ",
+                market_title: "ЧЕРНЫЙ РЫНОК",
+                items: {
+                    battery: "БАТАРЕЯ",
+                    chip: "AI ЧИП",
+                    vip: "VIP ДОСТУП",
+                    data: "ДАТА-ФАЙЛ"
+                },
+                loc: ["Сектор 7", "Центр-Сити", "Старый Район", "Нео-Ош", "Элитный Квартал"],
+                types: ["Апартаменты", "Капсула", "Лофт", "Бункер", "Студия"],
+                meta: {
+                    sec: "БЕЗОПАСНОСТЬ",
+                    dist: "ДИСТАНЦИЯ",
+                    lvl: ["ВЫСОКАЯ", "НИЗКАЯ", "СРЕДНЯЯ"]
+                },
+                popup: {
+                    hack: "ВЗЛОМ УСПЕШЕН",
+                    hack_msg: "Данные сохранены (+20 XP)"
+                }
+            },
+            en: {
+                loading: "INITIALIZING CORE...",
+                role: "OPERATOR",
+                creds: "CREDS",
+                nrg: "ENERGY",
+                nav_radar: "RADAR",
+                nav_market: "MARKET",
+                nav_profile: "PROFILE",
+                market_title: "BLACK MARKET",
+                items: {
+                    battery: "BATTERY",
+                    chip: "AI CHIP",
+                    vip: "VIP PASS",
+                    data: "DATA SHARD"
+                },
+                loc: ["Sector 7", "City Center", "Old Town", "Neo-Market", "Elite District"],
+                types: ["Apartment", "Capsule", "Loft", "Bunker", "Studio"],
+                meta: {
+                    sec: "SECURITY",
+                    dist: "DISTANCE",
+                    lvl: ["HIGH", "LOW", "MID"]
+                },
+                popup: {
+                    hack: "HACK SUCCESS",
+                    hack_msg: "Data secured (+20 XP)"
+                }
+            }
+        };
+
+        // Функция перевода
+        const T = (key) => {
+            const dict = DICT[USER_LANG] || DICT['en'];
+            return dict[key] || DICT['en'][key];
+        }
+        
+        // Перевод интерфейса при старте
+        function localize() {
+            document.getElementById('load-text').innerText = T('loading');
+            document.getElementById('lbl-role').innerText = T('role');
+            document.getElementById('lbl-creds').innerText = T('creds');
+            document.getElementById('lbl-nrg').innerText = T('nrg');
+            document.getElementById('nav-radar').innerText = T('nav_radar');
+            document.getElementById('nav-market').innerText = T('nav_market');
+            document.getElementById('nav-profile').innerText = T('nav_profile');
+            document.getElementById('lbl-market').innerText = T('market_title');
+        }
+        localize();
+
+        // --- AUDIO SYSTEM ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function beep(freq=1000, type='sine', vol=0.1, dur=0.1) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            if (type === 'beep') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-            } else if (type === 'success') {
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-                osc.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.2);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-            } else if (type === 'fail') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(200, audioCtx.currentTime);
-                osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.3);
-                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-            }
+            osc.type = type; osc.frequency.value = freq;
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+dur);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime+dur);
         }
 
-        // --- NAVIGATION ---
-        function nav(screenId) {
-            playSound('beep');
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-            
-            // Highlight Tab
-            const idx = ['radar', 'profile', 'clan'].indexOf(screenId);
-            document.querySelectorAll('.tab')[idx].classList.add('active');
+        // --- BACKGROUND ---
+        const cvs = document.getElementById('bg-canvas');
+        const ctx = cvs.getContext('2d');
+        let w, h, particles = [];
+        
+        function resize() { w=cvs.width=window.innerWidth; h=cvs.height=window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
 
-            // Toggle Controls
-            document.getElementById('ctrls').style.display = screenId === 'radar' ? 'flex' : 'none';
+        function initParticles() {
+            particles = Array(40).fill().map(() => ({
+                x: Math.random()*w, y: Math.random()*h, v: Math.random()*2+0.5, s: Math.random()*2
+            }));
         }
 
-        // --- GAME LOGIC ---
-        const items = [
-            {t:"APT-505", p:"¥450", r:"LEGENDARY", c:"#ffa500", i:"https://images.unsplash.com/photo-1512918760532-3ed465901d19?w=600&q=80"},
-            {t:"UNIT-01", p:"¥200", r:"COMMON", c:"#fff", i:"https://images.unsplash.com/photo-1536376072261-38c75010e6c9?w=600&q=80"}
+        function draw() {
+            ctx.clearRect(0,0,w,h);
+            ctx.fillStyle = '#00ff9d';
+            particles.forEach(p => {
+                p.y += p.v; if(p.y > h) p.y=0;
+                ctx.globalAlpha = p.s/4;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill();
+            });
+            requestAnimationFrame(draw);
+        }
+        initParticles(); draw();
+
+        // --- LOGIC ---
+        const ITEMS = [
+            { id: "battery", name: "battery", price: 50 },
+            { id: "chip", name: "chip", price: 150 },
+            { id: "vip", name: "vip", price: 500 },
+            { id: "data", name: "data", price: 20 }
         ];
-        let idx = 0;
-        let hacking = false;
 
-        function render() {
+        // ГЕНЕРАТОР КАРТОЧЕК НА НУЖНОМ ЯЗЫКЕ
+        function generateCardData() {
+            const dict = DICT[USER_LANG] || DICT['en'];
+            const loc = dict.loc[Math.floor(Math.random() * dict.loc.length)];
+            const type = dict.types[Math.floor(Math.random() * dict.types.length)];
+            const sec = dict.meta.lvl[Math.floor(Math.random() * dict.meta.lvl.length)];
+            
+            return {
+                title: `${type} ${Math.floor(Math.random()*900)}`,
+                price: `¥ ${Math.floor(Math.random()*3000)+200}`,
+                loc: loc,
+                sec: sec,
+                img: `https://source.unsplash.com/random/600x800/?cyberpunk,room,neon&sig=${Date.now()}`,
+                score: Math.floor(Math.random()*40)+60
+            };
+        }
+
+        function init() {
+            setTimeout(() => {
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').remove(), 500);
+                beep(600, 'square', 0.1, 0.2);
+                renderCard();
+                renderMarket();
+                document.getElementById('user-id').innerText = tg.initDataUnsafe.user?.id || 'UNKNOWN';
+            }, 1500);
+        }
+
+        function renderCard() {
             const stack = document.getElementById('stack');
             stack.innerHTML = '';
-            if (idx >= items.length) {
-                stack.innerHTML = '<div style="color:#555">NO SIGNALS</div>'; return;
-            }
-            const d = items[idx];
-            const div = document.createElement('div');
-            div.className = 'card';
-            div.id = 'card';
-            div.innerHTML = `
-                <img src="${d.i}">
-                <div class="card-body">
-                    <div class="rarity" style="color:${d.c}">${d.r}</div>
-                    <h2>${d.t}</h2>
-                    <p style="font-size:24px;">${d.p}</p>
-                    <p style="color:#888; font-size:12px;">ENCRYPTED DATA</p>
+            
+            const data = generateCardData();
+            const dict = DICT[USER_LANG] || DICT['en'];
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-visual">
+                    <img src="${data.img}" onerror="this.src='https://via.placeholder.com/600x800/000/0f0?text=NO+SIGNAL'">
+                </div>
+                <div class="card-data">
+                    <div class="card-badge">AI: ${data.score}</div>
+                    <h2 class="card-title">${data.title}</h2>
+                    <div class="card-price">${data.price}</div>
+                    <div class="card-meta">
+                        ${dict.meta.dist}: ${(Math.random()*5).toFixed(1)} KM<br>
+                        ${dict.loc}: ${data.loc}<br>
+                        ${dict.meta.sec}: <span style="color:var(--c-accent)">${data.sec}</span>
+                    </div>
                 </div>
             `;
-            stack.appendChild(div);
+            stack.appendChild(card);
         }
 
-        function skip() {
-            playSound('beep');
-            const c = document.getElementById('card');
-            c.style.transform = "translateX(-150%) rotate(-10deg)";
-            setTimeout(() => { idx++; render(); }, 300);
-        }
-
-        function hack() {
-            playSound('beep');
-            document.getElementById('hack-ui').style.display = 'flex';
-            hacking = true;
-        }
-
-        function stopHack() {
-            if (!hacking) return;
-            hacking = false;
-            const cur = document.getElementById('cursor').getBoundingClientRect();
-            const tar = document.querySelector('.hack-target').getBoundingClientRect();
+        function renderMarket() {
+            const grid = document.getElementById('market-grid');
+            const dict = DICT[USER_LANG] || DICT['en'];
             
-            if (cur.left >= tar.left - 20 && cur.right <= tar.right + 20) {
-                playSound('success');
-                document.getElementById('hack-msg').innerText = "SUCCESS";
-                document.getElementById('hack-msg').style.color = "#0f0";
-                setTimeout(() => {
-                    document.getElementById('hack-ui').style.display = 'none';
-                    tg.sendData(JSON.stringify({action: 'hack_attempt', success: true}));
-                    idx++; render();
-                }, 1000);
-            } else {
-                playSound('fail');
-                document.getElementById('hack-msg').innerText = "FAIL";
-                document.getElementById('hack-msg').style.color = "red";
-                setTimeout(() => {
-                    document.getElementById('hack-ui').style.display = 'none';
-                    tg.sendData(JSON.stringify({action: 'hack_attempt', success: false}));
-                }, 1000);
-            }
+            grid.innerHTML = ITEMS.map(i => `
+                <div class="item-slot" onclick="buy('${i.id}')">
+                    <div class="item-name">${dict.items[i.name]}</div>
+                    <div class="item-price">¥ ${i.price}</div>
+                </div>
+            `).join('');
         }
 
-        function createClan() {
+        function swipe(dir) {
+            const card = document.querySelector('.card');
+            if(!card) return;
+            
+            tg.HapticFeedback.impactOccurred('medium');
+            beep(dir==='right'?800:300, 'sine', 0.1);
+            
+            const x = dir==='right' ? 300 : -300;
+            const r = dir==='right' ? 20 : -20;
+            
+            card.style.transform = `translate(${x}px, 50px) rotate(${r}deg)`;
+            card.style.opacity = '0';
+            
+            setTimeout(() => renderCard(), 300);
+        }
+
+        function attemptHack() {
+            tg.HapticFeedback.impactOccurred('heavy');
+            beep(1200, 'sawtooth', 0.2);
+            const dict = DICT[USER_LANG] || DICT['en'];
+            
             tg.showPopup({
-                title: 'New Syndicate',
-                message: 'Enter syndicate name:',
-                buttons: [{type: 'ok', id: 'ok'}, {type: 'cancel'}]
-            }, (btn) => {
-                if (btn === 'ok') tg.sendData(JSON.stringify({action: 'create_clan', name: 'CyberSec'}));
+                title: dict.popup.hack,
+                message: dict.popup.hack_msg,
+                buttons: [{type: 'ok'}]
             });
+            tg.sendData(JSON.stringify({action: 'hack_complete'}));
+            swipe('right');
         }
 
-        render();
+        function buy(itemId) {
+            tg.HapticFeedback.selectionChanged();
+            tg.sendData(JSON.stringify({action: 'buy', item: itemId}));
+        }
+
+        function switchView(id) {
+            beep(500, 'square', 0.05);
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('view-'+id).classList.add('active');
+            document.getElementById('nav-'+id).classList.add('active');
+        }
+
+        init();
     </script>
 </body>
 </html>
