@@ -3,190 +3,263 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Genesis</title>
+    <title>Singularity</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
         :root {
-            --neon-red: #ff2a6d;
-            --neon-blue: #05d9e8;
-            --neon-yellow: #f7f052;
-            --bg: #01012b;
-            --panel: rgba(5, 217, 232, 0.1);
+            --h: 180; --s: 100%; --l: 50%;
+            --neon: hsl(var(--h), var(--s), var(--l));
+            --bg: #050505;
+            --panel: rgba(0, 20, 0, 0.9);
         }
 
         body {
-            background-color: var(--bg);
-            color: var(--neon-blue);
+            background: var(--bg);
+            color: var(--neon);
             font-family: 'Share Tech Mono', monospace;
-            margin: 0;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            background-image: repeating-linear-gradient(0deg, transparent, transparent 1px, #000 1px, #000 2px);
-            background-size: 100% 4px;
+            margin: 0; overflow: hidden; height: 100vh;
+            display: flex; flex-direction: column;
         }
 
-        /* GLITCH EFFECT */
-        .glitch {
-            position: relative;
-            color: white;
-            animation: glitch 1s infinite;
-        }
-        @keyframes glitch {
-            0% { text-shadow: 2px 0 var(--neon-red), -2px 0 var(--neon-blue); }
-            100% { text-shadow: -2px 0 var(--neon-red), 2px 0 var(--neon-blue); }
+        /* CRT EFFECT OVERLAY */
+        .crt::before {
+            content: " ";
+            display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 999; background-size: 100% 2px, 3px 100%; pointer-events: none;
         }
 
         /* HUD */
-        .hud {
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            background: rgba(0,0,0,0.8);
-            border-bottom: 1px solid var(--neon-blue);
-        }
-        .bar-container { width: 100px; height: 10px; background: #333; border: 1px solid var(--neon-blue); transform: skewX(-20deg); }
-        .bar-fill { width: 70%; height: 100%; background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); }
+        .hud { padding: 10px; border-bottom: 2px solid var(--neon); background: rgba(0,0,0,0.8); display: flex; justify-content: space-between; z-index: 10; }
+        .bar-wrap { width: 100px; height: 8px; border: 1px solid var(--neon); margin-top: 5px; transform: skewX(-20deg); }
+        .bar { height: 100%; background: var(--neon); width: 80%; box-shadow: 0 0 10px var(--neon); transition: width 0.5s; }
 
-        /* CONTENT */
-        #content { flex: 1; position: relative; perspective: 1000px; display: flex; align-items: center; justify-content: center; }
-        
+        /* TABS */
+        .tabs { display: flex; background: #111; z-index: 10; }
+        .tab { flex: 1; padding: 15px; text-align: center; border-bottom: 2px solid #333; color: #555; cursor: pointer; transition: 0.3s; }
+        .tab.active { border-color: var(--neon); color: var(--neon); text-shadow: 0 0 5px var(--neon); background: rgba(0, 255, 255, 0.1); }
+
+        /* SCREENS */
+        .screen { flex: 1; position: relative; display: none; overflow: hidden; }
+        .screen.active { display: flex; justify-content: center; align-items: center; }
+
+        /* CARD */
         .card {
             width: 85%; height: 60vh;
-            background: #000;
-            border: 2px solid var(--neon-red);
-            position: absolute;
-            display: flex; flex-direction: column;
-            box-shadow: 0 0 20px var(--neon-red);
-            transition: transform 0.3s;
+            background: #000; border: 2px solid var(--neon);
+            position: absolute; display: flex; flex-direction: column;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+            transition: transform 0.3s, opacity 0.3s;
         }
-        .card img { width: 100%; height: 50%; object-fit: cover; filter: grayscale(100%) contrast(1.2); border-bottom: 1px solid var(--neon-red); }
+        .card img { width: 100%; height: 50%; object-fit: cover; border-bottom: 1px solid var(--neon); filter: sepia(50%) hue-rotate(180deg) saturate(200%); }
         .card-body { padding: 15px; }
-        .rarity { color: var(--neon-yellow); font-size: 20px; text-shadow: 0 0 5px var(--neon-yellow); }
+        .rarity { font-size: 20px; font-weight: bold; text-shadow: 0 0 10px currentColor; }
 
-        /* HACKING MINI-GAME */
-        #hack-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
-            z-index: 100; display: none;
-            flex-direction: column; align-items: center; justify-content: center;
-        }
-        .hack-bar { width: 80%; height: 30px; border: 2px solid #fff; position: relative; overflow: hidden; }
-        .hack-zone { position: absolute; left: 40%; width: 20%; height: 100%; background: rgba(0, 255, 0, 0.5); }
-        .hack-cursor { position: absolute; left: 0; width: 5px; height: 100%; background: var(--neon-red); animation: moveCursor 1s linear infinite alternate; }
-        @keyframes moveCursor { from { left: 0; } to { left: 100%; } }
+        /* PROFILE */
+        .profile-stat { width: 80%; padding: 15px; border: 1px solid #333; margin-bottom: 10px; background: rgba(0,0,0,0.5); }
+
+        /* HACK GAME */
+        #hack-ui { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .hack-track { width: 80%; height: 40px; border: 2px solid #fff; position: relative; border-radius: 5px; overflow: hidden; }
+        .hack-target { position: absolute; left: 40%; width: 20%; height: 100%; background: rgba(0,255,0,0.5); }
+        .hack-cursor { position: absolute; left: 0; width: 4px; height: 100%; background: red; animation: move 0.8s infinite alternate linear; }
+        @keyframes move { to { left: 100%; } }
 
         /* CONTROLS */
-        .controls { padding: 20px; display: flex; gap: 10px; z-index: 10; }
-        .btn { flex: 1; height: 50px; background: transparent; border: 1px solid var(--neon-blue); color: var(--neon-blue); font-family: inherit; font-size: 18px; cursor: pointer; clip-path: polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%); transition: 0.1s; }
-        .btn:active { background: var(--neon-blue); color: #000; }
-        .btn-hack { border-color: var(--neon-red); color: var(--neon-red); }
-
+        .controls { padding: 20px; display: flex; gap: 20px; z-index: 10; }
+        .btn { flex: 1; height: 60px; border: 1px solid var(--neon); background: rgba(0,0,0,0.8); color: var(--neon); font-family: inherit; font-size: 20px; cursor: pointer; clip-path: polygon(10% 0, 100% 0, 100% 80%, 90% 100%, 0 100%, 0 20%); }
+        .btn:active { background: var(--neon); color: #000; }
+        
+        .s-legendary { color: #ffa500; border-color: #ffa500; }
+        .s-rare { color: #00bfff; border-color: #00bfff; }
     </style>
 </head>
-<body>
+<body class="crt">
 
     <div class="hud">
         <div>
-            <div style="font-size:12px;">NETRUNNER</div>
-            <div class="bar-container"><div class="bar-fill" id="energy-bar"></div></div>
+            <div style="font-size:10px;">OPERATIVE</div>
+            <div class="bar-wrap"><div class="bar" style="width:75%"></div></div>
         </div>
-        <div style="text-align:right;">
-            <div style="font-size:12px;">CREDITS</div>
-            <div class="glitch" style="font-size:18px;">¥ 1,450</div>
-        </div>
-    </div>
-
-    <div id="content">
-        <div class="card" id="current-card">
-            <img src="https://img.freepik.com/free-photo/cyberpunk-city-street-night-with-neon-lights_23-2150712265.jpg">
-            <div class="card-body">
-                <div class="rarity">LEGENDARY SIGNAL</div>
-                <h2>APT-404</h2>
-                <p>PRICE: ¥ 450</p>
-                <div style="font-size:12px; color:#666; margin-top:10px;">ENCRYPTION LEVEL: HARD</div>
-            </div>
+        <div style="text-align:right">
+            <div style="font-size:10px;">CREDITS</div>
+            <div style="font-size:18px;">¥ 2,450</div>
         </div>
     </div>
 
-    <div id="hack-overlay">
-        <h1 class="glitch" style="margin-bottom:20px;">DECRYPTING...</h1>
-        <div class="hack-bar">
-            <div class="hack-zone"></div>
+    <div class="tabs">
+        <div class="tab active" onclick="nav('radar')">RADAR</div>
+        <div class="tab" onclick="nav('profile')">ID</div>
+        <div class="tab" onclick="nav('clan')">CLAN</div>
+    </div>
+
+    <div id="radar" class="screen active">
+        <div id="stack"></div> </div>
+
+    <div id="profile" class="screen" style="flex-direction:column; padding-top:20px;">
+        <div class="profile-stat">
+            <h3>CLASS: NETRUNNER</h3>
+            <p>Level: 5</p>
+            <p>XP: 1250 / 2000</p>
+        </div>
+        <div class="profile-stat">
+            <h3>DAILY QUESTS</h3>
+            <p>[x] Hack 3 Terminals</p>
+            <p>[ ] Invite 1 Recruit</p>
+        </div>
+    </div>
+
+    <div id="clan" class="screen" style="flex-direction:column; align-items:center;">
+        <h2>NO SYNDICATE</h2>
+        <p style="color:#666; text-align:center; padding:20px;">Join a syndicate to boost credits gain by 10%.</p>
+        <button class="btn" style="width:200px;" onclick="createClan()">CREATE (¥1000)</button>
+    </div>
+
+    <div class="controls" id="ctrls">
+        <button class="btn" onclick="skip()">SKIP</button>
+        <button class="btn" style="border-color:#ff2a6d; color:#ff2a6d;" onclick="hack()">HACK</button>
+    </div>
+
+    <div id="hack-ui">
+        <h1 id="hack-msg">DECRYPTING...</h1>
+        <div class="hack-track">
+            <div class="hack-target"></div>
             <div class="hack-cursor" id="cursor"></div>
         </div>
-        <button class="btn" style="margin-top:30px; width:200px;" onclick="stopHack()">STOP</button>
-    </div>
-
-    <div class="controls">
-        <button class="btn" onclick="nextCard()">SKIP</button>
-        <button class="btn btn-hack" onclick="startHack()">HACK (2⚡)</button>
+        <button class="btn" style="margin-top:20px; width:150px;" onclick="stopHack()">STOP</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        let isHacking = false;
-
-        function startHack() {
-            tg.HapticFeedback.impactOccurred('heavy');
-            document.getElementById('hack-overlay').style.display = 'flex';
-            isHacking = true;
-        }
-
-        function stopHack() {
-            if (!isHacking) return;
-            isHacking = false;
+        // --- SOUND ENGINE (Synthesizer) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playSound(type) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
             
-            const cursor = document.getElementById('cursor');
-            const zone = document.querySelector('.hack-zone');
-            const barWidth = document.querySelector('.hack-bar').offsetWidth;
-            
-            // Calculate positions
-            const curLeft = cursor.getBoundingClientRect().left;
-            const zoneLeft = zone.getBoundingClientRect().left;
-            const zoneRight = zoneLeft + zone.offsetWidth;
-            
-            // Check Hit
-            if (curLeft >= zoneLeft && curLeft <= zoneRight) {
-                success();
-            } else {
-                fail();
+            if (type === 'beep') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'success') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'fail') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
             }
         }
 
-        function success() {
-            tg.HapticFeedback.notificationOccurred('success');
-            document.querySelector('.glitch').innerText = "ACCESS GRANTED";
-            document.querySelector('.glitch').style.color = "#0f0";
-            setTimeout(() => {
-                document.getElementById('hack-overlay').style.display = 'none';
-                tg.sendData(JSON.stringify({action: 'hack_attempt', success: true}));
-                tg.showPopup({title: 'SYSTEM', message: 'Owner: +996 555 ...\nSaved to Databank.'});
-            }, 1000);
+        // --- NAVIGATION ---
+        function nav(screenId) {
+            playSound('beep');
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            
+            // Highlight Tab
+            const idx = ['radar', 'profile', 'clan'].indexOf(screenId);
+            document.querySelectorAll('.tab')[idx].classList.add('active');
+
+            // Toggle Controls
+            document.getElementById('ctrls').style.display = screenId === 'radar' ? 'flex' : 'none';
         }
 
-        function fail() {
-            tg.HapticFeedback.notificationOccurred('error');
-            document.querySelector('.glitch').innerText = "ACCESS DENIED";
-            document.querySelector('.glitch').style.color = "red";
-            setTimeout(() => {
-                document.getElementById('hack-overlay').style.display = 'none';
-                tg.sendData(JSON.stringify({action: 'hack_attempt', success: false}));
-            }, 1000);
+        // --- GAME LOGIC ---
+        const items = [
+            {t:"APT-505", p:"¥450", r:"LEGENDARY", c:"#ffa500", i:"https://images.unsplash.com/photo-1512918760532-3ed465901d19?w=600&q=80"},
+            {t:"UNIT-01", p:"¥200", r:"COMMON", c:"#fff", i:"https://images.unsplash.com/photo-1536376072261-38c75010e6c9?w=600&q=80"}
+        ];
+        let idx = 0;
+        let hacking = false;
+
+        function render() {
+            const stack = document.getElementById('stack');
+            stack.innerHTML = '';
+            if (idx >= items.length) {
+                stack.innerHTML = '<div style="color:#555">NO SIGNALS</div>'; return;
+            }
+            const d = items[idx];
+            const div = document.createElement('div');
+            div.className = 'card';
+            div.id = 'card';
+            div.innerHTML = `
+                <img src="${d.i}">
+                <div class="card-body">
+                    <div class="rarity" style="color:${d.c}">${d.r}</div>
+                    <h2>${d.t}</h2>
+                    <p style="font-size:24px;">${d.p}</p>
+                    <p style="color:#888; font-size:12px;">ENCRYPTED DATA</p>
+                </div>
+            `;
+            stack.appendChild(div);
         }
 
-        function nextCard() {
-            const card = document.getElementById('current-card');
-            card.style.transform = "translateX(-200%) rotate(-20deg)";
-            setTimeout(() => {
-                card.style.transform = "translateX(0) rotate(0)";
-                // In real app, load next data here
-            }, 500);
+        function skip() {
+            playSound('beep');
+            const c = document.getElementById('card');
+            c.style.transform = "translateX(-150%) rotate(-10deg)";
+            setTimeout(() => { idx++; render(); }, 300);
         }
+
+        function hack() {
+            playSound('beep');
+            document.getElementById('hack-ui').style.display = 'flex';
+            hacking = true;
+        }
+
+        function stopHack() {
+            if (!hacking) return;
+            hacking = false;
+            const cur = document.getElementById('cursor').getBoundingClientRect();
+            const tar = document.querySelector('.hack-target').getBoundingClientRect();
+            
+            if (cur.left >= tar.left - 20 && cur.right <= tar.right + 20) {
+                playSound('success');
+                document.getElementById('hack-msg').innerText = "SUCCESS";
+                document.getElementById('hack-msg').style.color = "#0f0";
+                setTimeout(() => {
+                    document.getElementById('hack-ui').style.display = 'none';
+                    tg.sendData(JSON.stringify({action: 'hack_attempt', success: true}));
+                    idx++; render();
+                }, 1000);
+            } else {
+                playSound('fail');
+                document.getElementById('hack-msg').innerText = "FAIL";
+                document.getElementById('hack-msg').style.color = "red";
+                setTimeout(() => {
+                    document.getElementById('hack-ui').style.display = 'none';
+                    tg.sendData(JSON.stringify({action: 'hack_attempt', success: false}));
+                }, 1000);
+            }
+        }
+
+        function createClan() {
+            tg.showPopup({
+                title: 'New Syndicate',
+                message: 'Enter syndicate name:',
+                buttons: [{type: 'ok', id: 'ok'}, {type: 'cancel'}]
+            }, (btn) => {
+                if (btn === 'ok') tg.sendData(JSON.stringify({action: 'create_clan', name: 'CyberSec'}));
+            });
+        }
+
+        render();
     </script>
 </body>
 </html>
