@@ -3,404 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI SYMBIOSIS</title>
+    <title>Symbiosis Interface</title>
+    <!-- Подключаем скрипт Телеграма -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Teko:wght@300;600&family=JetBrains+Mono:wght@400;800&display=swap');
-
         :root {
-            --bg: #0a0a12;
-            --main: #00f0ff;
-            --sec: #ff0055;
-            --gold: #ffe600;
+            --neon-green: #00ff9d;
+            --neon-purple: #bc13fe;
+            --bg-color: #050505;
+            --card-bg: #1a1a1a;
         }
-
         body {
-            margin: 0; overflow: hidden; background: var(--bg);
-            font-family: 'Teko', sans-serif; color: white;
-            user-select: none; -webkit-tap-highlight-color: transparent;
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
         }
-
-        /* LAYERS */
-        #game { position: fixed; inset: 0; z-index: 1; }
-        #ui { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
-
-        /* HUD */
-        .hud-top {
-            position: absolute; top: 0; left: 0; width: 100%; padding: 10px;
-            display: flex; justify-content: space-between;
-            background: linear-gradient(180deg, rgba(0,0,0,0.9), transparent);
+        h1 {
+            color: var(--neon-green);
+            text-shadow: 0 0 10px var(--neon-green);
+            font-size: 24px;
+            margin-bottom: 5px;
         }
-        .stat-box { display: flex; flex-direction: column; }
-        .val { font-size: 24px; font-weight: bold; line-height: 1; }
-        .lbl { font-size: 12px; opacity: 0.7; font-family: 'JetBrains Mono'; }
-
-        /* AI CHAT */
-        .ai-log {
-            position: absolute; bottom: 100px; left: 10px; width: 80%;
-            font-family: 'JetBrains Mono'; font-size: 12px;
-            color: var(--main); text-shadow: 0 0 5px var(--main);
-            pointer-events: none; opacity: 0.8;
+        .subtitle {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 30px;
         }
-        .ai-msg { margin-bottom: 5px; animation: slideIn 0.3s; }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
-
-        /* COMBO METER */
-        .combo-box {
-            position: absolute; top: 80px; left: 20px;
-            font-size: 30px; font-style: italic; color: var(--gold);
-            opacity: 0; transition: 0.2s; text-shadow: 5px 5px 0 #000;
-        }
-        .combo-box.active { opacity: 1; transform: scale(1.2); }
-
-        /* CONTROLS */
-        .dock {
-            position: absolute; bottom: 20px; width: 100%;
-            display: flex; justify-content: center; gap: 10px; pointer-events: auto;
-        }
-        .btn {
-            background: rgba(0, 20, 30, 0.9); border: 1px solid #333;
-            color: #fff; padding: 10px 15px; border-radius: 4px;
-            font-family: 'JetBrains Mono'; font-weight: bold; font-size: 12px;
-            cursor: pointer; box-shadow: 0 4px 0 #000; transition: 0.1s;
-        }
-        .btn:active { transform: translateY(4px); box-shadow: 0 0 0 #000; }
-        .btn-gold { border-color: var(--gold); color: var(--gold); }
-        .btn-ai { border-color: var(--main); color: var(--main); }
-
-        /* MODALS */
-        .modal {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 50;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            pointer-events: auto;
-        }
-        .gacha-box {
-            width: 150px; height: 150px; border: 2px solid var(--main);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 50px; animation: spin 0.5s infinite linear;
-            margin-bottom: 20px; display: none;
-        }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
         
-        /* DAMAGE TEXT */
-        .dmg-txt { position: absolute; font-weight: bold; animation: fly 0.8s forwards; pointer-events: none; }
-        @keyframes fly { 100% { transform: translateY(-100px); opacity: 0; } }
+        /* КАРТОЧКА БАЛАНСА */
+        .stats-card {
+            background: var(--card-bg);
+            border: 1px solid var(--neon-purple);
+            border-radius: 12px;
+            padding: 15px;
+            width: 100%;
+            max-width: 300px;
+            text-align: center;
+            box-shadow: 0 0 15px rgba(188, 19, 254, 0.2);
+            margin-bottom: 30px;
+        }
+        .neon-count {
+            font-size: 36px;
+            font-weight: bold;
+            color: white;
+        }
+        .label {
+            color: var(--neon-purple);
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        /* КНОПКИ */
+        .btn {
+            background: transparent;
+            border: 2px solid var(--neon-green);
+            color: var(--neon-green);
+            padding: 15px 30px;
+            font-size: 16px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            max-width: 300px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn:active {
+            background: var(--neon-green);
+            color: black;
+            transform: scale(0.98);
+        }
+        
+        .btn-donate {
+            border-color: var(--neon-purple);
+            color: var(--neon-purple);
+        }
+        .btn-donate:active {
+            background: var(--neon-purple);
+            color: white;
+        }
+
+        /* Анимация загрузки */
+        #loader {
+            display: none;
+            margin-top: 20px;
+            color: #fff;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink { 50% { opacity: 0.5; } }
 
     </style>
 </head>
 <body>
 
-    <canvas id="game"></canvas>
+    <h1>SYMBIOSIS CORE</h1>
+    <div class="subtitle">Neural Network RPG v1.0</div>
 
-    <div id="ui">
-        <div class="hud-top">
-            <div class="stat-box">
-                <div class="val" style="color:var(--main)" id="ui-creds">0</div>
-                <div class="lbl">CREDITS</div>
-            </div>
-            <div class="stat-box" style="align-items: center;">
-                <div class="val" style="color:white" id="ui-hp">100%</div>
-                <div class="lbl" id="ui-lvl">SECTOR 1</div>
-            </div>
-            <div class="stat-box" style="align-items: flex-end;">
-                <div class="val" style="color:var(--gold)" id="ui-neon">0</div>
-                <div class="lbl">NEON</div>
-            </div>
-        </div>
-
-        <div class="combo-box" id="ui-combo">x1.0 COMBO!</div>
-
-        <div class="ai-log" id="ai-log">
-            <div class="ai-msg">> SYSTEM: Online.</div>
-        </div>
-
-        <div class="dock">
-            <button class="btn btn-ai" onclick="upgrade('ai')">AI CORE <br><span id="cost-ai" style="font-size:10px">100</span></button>
-            <button class="btn" onclick="upgrade('power')">WEAPON <br><span id="cost-pow" style="font-size:10px">100</span></button>
-            <button class="btn btn-gold" onclick="openGachaModal()">DATA BOX</button>
-        </div>
+    <div class="stats-card">
+        <div class="label">Энергия (Neon)</div>
+        <div class="neon-count" id="neonVal">50</div>
     </div>
 
-    <div id="modal-gacha" class="modal">
-        <h1 style="color:var(--gold)">DATA ARCHIVE</h1>
-        <div class="gacha-box" id="gacha-anim">📦</div>
-        <div id="gacha-result" style="text-align:center; display:none">
-            <h2 id="item-name" style="color:var(--main)">...</h2>
-            <p id="item-buff" style="font-family:'JetBrains Mono'; color:#aaa">...</p>
-        </div>
-        <div style="display:flex; gap:10px; margin-top:20px;">
-            <button class="btn btn-gold" onclick="pullGacha()">OPEN (50 NEON)</button>
-            <button class="btn" onclick="buyNeon()">BUY NEON</button>
-            <button class="btn" onclick="closeGacha()">CLOSE</button>
-        </div>
-    </div>
+    <button class="btn" onclick="generateItem()">
+        🔮 Синтез (25 Neon)
+    </button>
+
+    <button class="btn btn-donate" onclick="buyNeon()">
+        ⚡ Купить Энергию
+    </button>
+
+    <div id="loader">Processing Neural Data...</div>
 
     <script>
+        // Инициализация WebApp
         const tg = window.Telegram.WebApp;
-        tg.expand();
+        tg.expand(); // Раскрыть на весь экран
+        tg.ready();
 
-        // --- ENGINE ---
-        const cvs = document.getElementById('game');
-        const ctx = cvs.getContext('2d');
-        let w, h;
+        // Локальное состояние (для визуала)
+        let neon = 50;
 
-        const state = {
-            credits: 0, neon: 0, level: 1,
-            hp: 500, maxHp: 500,
-            power: 10, aiLvl: 0,
-            combo: 0, lastHit: 0,
-            shake: 0
-        };
-
-        // OBJECTS
-        let particles = [];
-        let weakPoints = []; // Critical hit targets
-        let lastAiAction = 0;
-
-        function resize() { w = cvs.width = window.innerWidth; h = cvs.height = window.innerHeight; }
-        window.addEventListener('resize', resize); resize();
-
-        // --- AI LOGIC (AUTONOMOUS) ---
-        function aiTick() {
-            // AI Chat
-            if(Math.random() < 0.005) {
-                const msgs = [
-                    "Analyzing structure...", "Weakness detected.", "Faster, Operator!", 
-                    "Credits mining: optimal.", "System integrity: 99%"
-                ];
-                logAI(msgs[Math.floor(Math.random()*msgs.length)]);
-            }
-
-            // AI Auto-Attack (Based on Level)
-            if(state.aiLvl > 0) {
-                const delay = Math.max(100, 2000 - (state.aiLvl * 100)); // Faster with level
-                if(Date.now() - lastAiAction > delay) {
-                    lastAiAction = Date.now();
-                    // AI hits visually
-                    createHit(state.power * 0.5, w/2 + (Math.random()-0.5)*100, h/2 - 100, true);
-                }
-            }
+        // Отправка данных боту
+        function sendData(action) {
+            const data = {
+                act: action,
+                timestamp: Date.now()
+            };
+            // Эта команда закрывает WebApp и отправляет JSON боту
+            tg.sendData(JSON.stringify(data));
         }
 
-        function logAI(text) {
-            const log = document.getElementById('ai-log');
-            const el = document.createElement('div');
-            el.className = 'ai-msg';
-            el.innerText = `> ${text}`;
-            log.appendChild(el);
-            if(log.children.length > 4) log.firstChild.remove();
-        }
-
-        // --- RENDER ---
-        function loop() {
-            ctx.fillStyle = "#0a0a12";
-            ctx.fillRect(0,0,w,h);
-
-            // Shake
-            const shakeX = (Math.random()-0.5) * state.shake;
-            const shakeY = (Math.random()-0.5) * state.shake;
-            
-            ctx.save();
-            ctx.translate(shakeX, shakeY);
-
-            // Draw Tower
-            const tx = w/2; const ty = h/2 + 50;
-            ctx.fillStyle = "#1a1a24";
-            ctx.fillRect(tx-60, ty-200, 120, 400); // Base
-            
-            // Health Glow
-            const hpP = state.hp / state.maxHp;
-            ctx.fillStyle = `rgba(0, 240, 255, ${hpP})`;
-            ctx.fillRect(tx-50, ty-190, 100, 380 * hpP); // Energy Core
-            
-            // Grid
-            ctx.strokeStyle = "rgba(255,255,255,0.1)";
-            ctx.beginPath();
-            for(let i=0; i<10; i++) {
-                ctx.moveTo(tx-60, ty-200 + i*40); ctx.lineTo(tx+60, ty-200+i*40);
-            }
-            ctx.stroke();
-
-            // Weak Points
-            weakPoints.forEach(p => {
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-                ctx.strokeStyle = "#ff0055"; ctx.lineWidth = 3; ctx.stroke();
-                ctx.fillStyle = "rgba(255,0,85,0.3)"; ctx.fill();
-                p.r -= 0.2; // Shrink
-            });
-
-            // Particles
-            particles.forEach((p,i) => {
-                p.x += p.vx; p.y += p.vy; p.vy += 0.5; p.life -= 0.02;
-                ctx.fillStyle = p.c;
-                ctx.globalAlpha = p.life;
-                ctx.fillRect(p.x, p.y, p.s, p.s);
-                if(p.life<=0) particles.splice(i,1);
-            });
-
-            ctx.restore();
-
-            // Logic
-            if(state.shake > 0) state.shake *= 0.9;
-            if(state.combo > 0 && Date.now() - state.lastHit > 1000) {
-                state.combo = 0;
-                document.getElementById('ui-combo').classList.remove('active');
+        function generateItem() {
+            if (neon < 25) {
+                tg.showAlert("Недостаточно энергии! Купите Neon.");
+                return;
             }
             
-            // Spawn Weak Point
-            if(Math.random() < 0.02 && weakPoints.length < 3) {
-                weakPoints.push({
-                    x: w/2 + (Math.random()-0.5)*100,
-                    y: h/2 - 100 + (Math.random()-0.5)*200,
-                    r: 20
-                });
-            }
-            // Cleanup Weak Points
-            weakPoints = weakPoints.filter(p => p.r > 0);
-
-            aiTick();
-            requestAnimationFrame(loop);
-        }
-
-        // --- INTERACTION ---
-        function createHit(dmg, x, y, isAuto=false) {
-            state.hp -= dmg;
-            state.shake = 5;
+            // Визуально списываем
+            neon -= 25;
+            document.getElementById('neonVal').innerText = neon;
             
-            // Visuals
-            spawnParticles(x, y, isAuto ? "#00f0ff" : "#fff");
-            spawnText(Math.floor(dmg), x, y, isAuto ? "#00f0ff" : "#fff");
+            document.getElementById('loader').style.display = 'block';
             
-            if(!isAuto) {
-                tg.HapticFeedback.impactOccurred('light');
-                state.lastHit = Date.now();
-                state.combo++;
-                if(state.combo > 5) {
-                    const el = document.getElementById('ui-combo');
-                    el.innerText = `x${(1 + state.combo/10).toFixed(1)} COMBO!`;
-                    el.classList.add('active');
-                }
-            }
-
-            if(state.hp <= 0) levelUp();
-            updateUI();
+            // Отправляем запрос боту
+            sendData('generate');
         }
 
-        cvs.addEventListener('pointerdown', (e) => {
-            let dmg = state.power;
-            let isCrit = false;
-
-            // Check Weak Points
-            for(let i=0; i<weakPoints.length; i++) {
-                const p = weakPoints[i];
-                const dx = e.clientX - p.x;
-                const dy = e.clientY - p.y;
-                if(dx*dx + dy*dy < p.r*p.r * 2) { // Hit
-                    isCrit = true;
-                    dmg *= 5; // CRIT!
-                    weakPoints.splice(i, 1);
-                    spawnText("CRIT!", e.clientX, e.clientY - 30, "#ff0055", 30);
-                    tg.HapticFeedback.notificationOccurred('success');
-                    break;
-                }
-            }
-
-            // Combo Bonus
-            if(state.combo > 10) dmg *= 1.5;
-
-            createHit(dmg, e.clientX, e.clientY);
-            state.credits++;
-        });
-
-        // --- SYSTEMS ---
-        function levelUp() {
-            state.level++;
-            state.credits += state.level * 100;
-            state.hp = state.maxHp = state.level * 500;
-            logAI("Target destroyed. Sector cleared.");
-            tg.sendData(JSON.stringify({act:'save', credits:state.credits, lvl:state.level}));
+        function buyNeon() {
+            sendData('buy_neon');
         }
 
-        function spawnParticles(x,y,c) {
-            for(let i=0; i<5; i++) {
-                particles.push({
-                    x:x, y:y, vx:(Math.random()-0.5)*10, vy:(Math.random()-0.5)*10,
-                    life:1, c:c, s:Math.random()*4+1
-                });
-            }
-        }
-
-        function spawnText(txt, x, y, c, s=24) {
-            const el = document.createElement('div');
-            el.className = 'dmg-txt';
-            el.innerText = txt;
-            el.style.left = x+'px'; el.style.top = y+'px';
-            el.style.color = c; el.style.fontSize = s+'px';
-            document.body.appendChild(el);
-            setTimeout(()=>el.remove(), 800);
-        }
-
-        function updateUI() {
-            document.getElementById('ui-creds').innerText = Math.floor(state.credits);
-            document.getElementById('ui-neon').innerText = state.neon;
-            document.getElementById('ui-lvl').innerText = `SECTOR ${state.level}`;
-            document.getElementById('ui-hp').innerText = Math.ceil((state.hp/state.maxHp)*100) + "%";
-            
-            document.getElementById('cost-pow').innerText = state.power * 50;
-            document.getElementById('cost-ai').innerText = (state.aiLvl+1) * 200;
-        }
-
-        // --- MENU ACTIONS ---
-        window.upgrade = (type) => {
-            let cost = 0;
-            if(type === 'power') cost = state.power * 50;
-            if(type === 'ai') cost = (state.aiLvl + 1) * 200;
-
-            if(state.credits >= cost) {
-                state.credits -= cost;
-                tg.sendData(JSON.stringify({act:'upgrade', stat:type, cost:cost}));
-                if(type === 'power') state.power += 5;
-                if(type === 'ai') { state.aiLvl++; logAI("AI Core upgraded. Efficiency increased."); }
-                updateUI();
-            } else {
-                tg.showAlert("Need Credits");
-            }
-        };
-
-        // --- GACHA ---
-        window.openGachaModal = () => document.getElementById('modal-gacha').style.display = 'flex';
-        window.closeGacha = () => document.getElementById('modal-gacha').style.display = 'none';
-        
-        window.pullGacha = () => {
-            if(state.neon < 50) { tg.showAlert("Need 50 Neon"); return; }
-            state.neon -= 50;
-            updateUI();
-            
-            // Anim
-            const box = document.getElementById('gacha-anim');
-            const res = document.getElementById('gacha-result');
-            box.style.display = 'flex';
-            res.style.display = 'none';
-            
-            tg.sendData(JSON.stringify({act:'gacha'}));
-        };
-        
-        window.buyNeon = () => {
-             tg.sendData(JSON.stringify({act:'donate', amount:100, price:45}));
-        };
-
-        // LISTENER
-        Telegram.WebApp.onEvent('message_received', (jsonStr) => {
-             // In real app, parse this properly. 
-             // Currently we rely on optimistic updates, but this listener would handle the "GACHA_WIN" response.
-        });
-
-        // INIT
-        loop();
-        tg.sendData(JSON.stringify({act:'init'}));
-        logAI("Connected. Awaiting input.");
-
+        // Настройка темы под Телеграм
+        document.body.style.backgroundColor = tg.themeParams.bg_color || '#050505';
     </script>
 </body>
 </html>
