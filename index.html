@@ -3,399 +3,352 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Symbiosis RPG: Open World</title>
+    <title>Symbiosis Ultimate</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
         :root {
-            --neon-green: #0f0;
-            --neon-pink: #f0f;
-            --bg-color: #050505;
+            --neon: #00ff9d;
+            --hack: #ff0055;
+            --ui-bg: rgba(0, 10, 5, 0.9);
         }
 
         body {
-            background-color: var(--bg-color);
-            margin: 0;
-            overflow: hidden;
-            font-family: 'VT323', monospace;
-            touch-action: none; /* Отключаем зум пальцами */
+            background: #000;
+            margin: 0; overflow: hidden;
+            font-family: 'Share Tech Mono', monospace;
+            color: white; user-select: none;
+            -webkit-user-select: none;
         }
 
-        /* ИГРОВОЙ ЭКРАН (CANVAS) */
-        #gameCanvas {
-            display: block;
-            image-rendering: pixelated; /* Пиксель-арт стиль */
-        }
+        canvas { display: block; }
 
-        /* CRT ЭФФЕКТ (Старый монитор) */
-        .crt-overlay {
+        /* BOOT SCREEN */
+        #boot {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-            z-index: 10;
+            background: #000; z-index: 999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 14px; color: var(--neon);
         }
 
-        /* ИНТЕРФЕЙС (UI) */
-        #ui-layer {
+        /* UI LAYER */
+        #ui {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            display: flex; flex-direction: column; justify-content: space-between;
+            pointer-events: none; z-index: 10;
         }
 
-        /* ДИАЛОГОВОЕ ОКНО */
-        #dialogue-box {
-            background: rgba(0, 0, 0, 0.85);
-            border: 2px solid var(--neon-green);
-            color: var(--neon-green);
-            padding: 15px;
-            margin: 10px;
-            font-size: 20px;
-            min-height: 80px;
-            text-shadow: 0 0 5px var(--neon-green);
-            display: none;
-            pointer-events: auto;
-        }
-
-        /* УПРАВЛЕНИЕ (ДЖОЙСТИК) */
-        .controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            padding: 20px;
-            pointer-events: auto;
-        }
-
-        .d-pad {
-            width: 120px; height: 120px;
-            position: relative;
-        }
-
-        .d-btn {
-            position: absolute;
-            width: 40px; height: 40px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 5px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 20px; color: white;
-            user-select: none;
-        }
-        .d-btn:active { background: var(--neon-green); color: black; }
-        
-        .btn-up { top: 0; left: 40px; }
-        .btn-down { bottom: 0; left: 40px; }
-        .btn-left { top: 40px; left: 0; }
-        .btn-right { top: 40px; right: 0; }
-
-        .action-btn {
-            width: 80px; height: 80px;
-            background: rgba(255, 0, 85, 0.2);
-            border: 2px solid var(--neon-pink);
-            border-radius: 50%;
-            color: var(--neon-pink);
-            font-size: 24px;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 15px var(--neon-pink);
-            opacity: 0.5;
-            transition: 0.2s;
-        }
-        .action-btn.active { opacity: 1; transform: scale(1.1); background: var(--neon-pink); color: white; cursor: pointer; }
-
-        /* HUD */
-        .hud {
-            padding: 10px;
-            color: white;
+        .hud-top {
+            position: absolute; top: 10px; left: 10px; right: 10px;
+            display: flex; justify-content: space-between;
+            text-transform: uppercase; text-shadow: 0 0 5px var(--neon);
             font-size: 18px;
-            text-shadow: 1px 1px 0 #000;
         }
+
+        /* MINIGAME (HACKING) */
+        #hack-ui {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250px; height: 150px;
+            background: var(--ui-bg);
+            border: 2px solid var(--hack);
+            border-radius: 10px;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            pointer-events: auto;
+            box-shadow: 0 0 30px rgba(255, 0, 85, 0.3);
+        }
+        
+        .hack-bar-bg {
+            width: 200px; height: 20px; background: #333;
+            border-radius: 10px; overflow: hidden; position: relative;
+            margin: 20px 0;
+        }
+        .hack-zone {
+            position: absolute; left: 70%; width: 30px; height: 100%;
+            background: var(--neon); opacity: 0.5;
+        }
+        .hack-cursor {
+            position: absolute; left: 0; width: 5px; height: 100%;
+            background: #fff; box-shadow: 0 0 10px #fff;
+        }
+        .hack-btn {
+            background: var(--hack); color: white; border: none;
+            padding: 10px 30px; font-family: inherit; font-size: 16px;
+            cursor: pointer; border-radius: 5px;
+        }
+
+        /* CONTROLS */
+        #joystick-area {
+            position: absolute; bottom: 50px; left: 50px;
+            width: 100px; height: 100px;
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 50%; pointer-events: auto;
+        }
+        #stick {
+            position: absolute; top: 50%; left: 50%;
+            width: 40px; height: 40px; background: rgba(0,255,157,0.5);
+            border-radius: 50%; transform: translate(-50%,-50%);
+            pointer-events: none;
+        }
+
+        #action-btn {
+            position: absolute; bottom: 60px; right: 40px;
+            width: 80px; height: 80px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 30px; opacity: 0.3; transition: 0.2s;
+            pointer-events: auto;
+        }
+        #action-btn.active {
+            opacity: 1; background: var(--hack); border-color: var(--hack);
+            box-shadow: 0 0 20px var(--hack); transform: scale(1.1);
+        }
+
     </style>
 </head>
 <body>
+    
+    <!-- BOOT SCREEN -->
+    <div id="boot">
+        <div>INITIALIZING NEURAL LINK...</div>
+        <div id="boot-log" style="color:#666; font-size:10px; margin-top:10px">Connecting...</div>
+    </div>
 
-    <div class="crt-overlay"></div>
-    <canvas id="gameCanvas"></canvas>
+    <!-- HACKING MINIGAME -->
+    <div id="hack-ui">
+        <div style="color:var(--hack)">SECURITY BREACH</div>
+        <div class="hack-bar-bg">
+            <div class="hack-zone"></div>
+            <div class="hack-cursor" id="cursor"></div>
+        </div>
+        <button class="hack-btn" onmousedown="tryHack()">HACK</button>
+    </div>
 
-    <div id="ui-layer">
-        <div class="hud">
-            <div>👤 <span id="pName">Runner</span></div>
-            <div>⚡ <span id="pNeon">100</span></div>
+    <canvas id="game"></canvas>
+
+    <div id="ui">
+        <div class="hud-top">
+            <div>USER: <span id="uName">GUEST</span></div>
+            <div style="color:var(--neon)">NEON: <span id="uNeon">...</span></div>
         </div>
 
-        <div id="dialogue-box" onclick="nextDialogue()">
-            <div id="dialogue-text">System booting...</div>
-            <div style="font-size: 12px; color: #888; margin-top:5px; text-align: right;">[TAP TO CONTINUE]</div>
-        </div>
-
-        <div class="controls">
-            <div class="d-pad">
-                <div class="d-btn btn-up" ontouchstart="startMove(0, -1)" ontouchend="stopMove()">▲</div>
-                <div class="d-btn btn-down" ontouchstart="startMove(0, 1)" ontouchend="stopMove()">▼</div>
-                <div class="d-btn btn-left" ontouchstart="startMove(-1, 0)" ontouchend="stopMove()">◀</div>
-                <div class="d-btn btn-right" ontouchstart="startMove(1, 0)" ontouchend="stopMove()">▶</div>
-            </div>
-
-            <div class="action-btn" id="btnInteract" onclick="interact()">
-                🖐
-            </div>
-        </div>
+        <div id="joystick-area"><div id="stick"></div></div>
+        <div id="action-btn" onclick="interact()">🖐</div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
+        const user = tg.initDataUnsafe.user || { first_name: "Operative" };
+        document.getElementById('uName').innerText = user.first_name.toUpperCase();
 
-        // --- ДВИЖОК ИГРЫ ---
-        const canvas = document.getElementById('gameCanvas');
+        // --- ENGINE SETUP ---
+        const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
+        let width, height;
+        const TILE = 40;
 
-        // Настройки
-        const TILE_SIZE = 40;
-        const VIEW_W = Math.ceil(window.innerWidth / TILE_SIZE) + 2;
-        const VIEW_H = Math.ceil(window.innerHeight / TILE_SIZE) + 2;
-
-        // Состояние
-        let player = { x: 5, y: 5, color: '#0f0', moving: false, dx: 0, dy: 0, neon: 100 };
-        let camera = { x: 0, y: 0 };
-        let gameTick = 0;
-        let dialogueQueue = [];
-        let isDialogueOpen = false;
-        let nearbyObject = null; // Объект, с которым можно взаимодействовать
-
-        // Карта (0=пол, 1=стена, 2=сундук, 3=NPC, 4=декор)
-        // 20x20 карта
-        const mapData = [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,1],
-            [1,0,3,0,0,0,1,0,2,0,0,0,0,1,0,0,0,0,0,1],
-            [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,1,0,0,1,1,1,1,1,1,0,0,1,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,3,0,0,1],
-            [1,0,0,0,0,0,0,0,2,0,0,0,0,1,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-        ];
-
-        // База объектов (тексты, логика)
-        const objects = {
-            2: { name: "LootBox", type: "loot", text: "Взломать контейнер? (25 Neon)" },
-            3: { name: "Hacker", type: "npc", text: "Псс... Этот город - всего лишь код. А мы - баги." }
+        // --- STATE ---
+        let state = {
+            player: { x: 400, y: 400 },
+            cam: { x: 0, y: 0 },
+            neon: 100,
+            target: null, // Объект рядом
+            hacking: false
         };
 
-        // --- ИНИЦИАЛИЗАЦИЯ ---
+        // --- MAP GENERATION (Procedural-ish) ---
+        const MAP_SIZE = 30;
+        const map = [];
+        for(let y=0; y<MAP_SIZE; y++){
+            let row = [];
+            for(let x=0; x<MAP_SIZE; x++){
+                // Границы
+                if(x==0 || y==0 || x==MAP_SIZE-1 || y==MAP_SIZE-1) row.push(1);
+                // Лут (5% шанс)
+                else if(Math.random() > 0.95) row.push(2); 
+                // Стены (10% шанс)
+                else if(Math.random() > 0.90) row.push(1);
+                else row.push(0);
+            }
+            map.push(row);
+        }
+
+        // --- BOOT SEQUENCE ---
+        setTimeout(() => {
+            const boot = document.getElementById('boot');
+            boot.style.opacity = 0;
+            setTimeout(()=>boot.style.display='none', 1000);
+        }, 1500);
+
         function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
         }
         window.addEventListener('resize', resize);
         resize();
 
-        // --- ИГРОВОЙ ЦИКЛ ---
+        // --- CONTROLS ---
+        let joy = { active:false, dx:0, dy:0, sx:0, sy:0 };
+        const stickArea = document.getElementById('joystick-area');
+        const stick = document.getElementById('stick');
+
+        stickArea.addEventListener('touchstart', e => {
+            e.preventDefault();
+            const t = e.touches[0];
+            joy.active=true; joy.sx=t.clientX; joy.sy=t.clientY;
+        });
+
+        window.addEventListener('touchmove', e => {
+            if(!joy.active) return;
+            const t = e.touches[0];
+            const max = 40;
+            let dx = t.clientX - joy.sx;
+            let dy = t.clientY - joy.sy;
+            let dist = Math.min(Math.sqrt(dx*dx+dy*dy), max);
+            let ang = Math.atan2(dy, dx);
+            stick.style.transform = `translate(calc(-50% + ${Math.cos(ang)*dist}px), calc(-50% + ${Math.sin(ang)*dist}px))`;
+            joy.dx = Math.cos(ang)*(dist/max);
+            joy.dy = Math.sin(ang)*(dist/max);
+        });
+
+        window.addEventListener('touchend', () => {
+            joy.active=false; joy.dx=0; joy.dy=0;
+            stick.style.transform = `translate(-50%,-50%)`;
+        });
+
+        // --- HACKING MINIGAME ---
+        let hackCursorPos = 0;
+        let hackDir = 1;
+        
+        function startHack() {
+            state.hacking = true;
+            document.getElementById('hack-ui').style.display = 'flex';
+        }
+
+        function tryHack() {
+            // Зона успеха примерно 70-85% (140px - 170px из 200px)
+            if(hackCursorPos > 70 && hackCursorPos < 85) {
+                // SUCCESS
+                tg.sendData(JSON.stringify({act: 'gacha'}));
+                state.neon -= 25; // Visual feedback
+                document.getElementById('uNeon').innerText = state.neon;
+                // Удаляем сундук с карты
+                if(state.target) map[state.target.y][state.target.x] = 0;
+            } else {
+                tg.showAlert("HACK FAILED! Security alerted.");
+            }
+            state.hacking = false;
+            document.getElementById('hack-ui').style.display = 'none';
+        }
+
+        function updateHack() {
+            if(!state.hacking) return;
+            hackCursorPos += 2 * hackDir;
+            if(hackCursorPos > 100 || hackCursorPos < 0) hackDir *= -1;
+            document.getElementById('cursor').style.left = hackCursorPos + '%';
+        }
+
+        // --- CORE LOOP ---
+        function update() {
+            if(state.hacking) {
+                updateHack();
+                return;
+            }
+
+            // Move Player
+            if(joy.active) {
+                let nx = state.player.x + joy.dx * 5;
+                let ny = state.player.y + joy.dy * 5;
+                // Collsion
+                let cx = Math.floor((nx+10)/TILE);
+                let cy = Math.floor((ny+10)/TILE);
+                if(map[cy] && map[cy][cx] !== 1) {
+                    state.player.x = nx; state.player.y = ny;
+                }
+            }
+
+            // Camera Follow
+            state.cam.x += (state.player.x - width/2 - state.cam.x) * 0.1;
+            state.cam.y += (state.player.y - height/2 - state.cam.y) * 0.1;
+
+            // Check Interactions
+            let cx = Math.floor((state.player.x+10)/TILE);
+            let cy = Math.floor((state.player.y+10)/TILE);
+            let btn = document.getElementById('action-btn');
+
+            if(map[cy][cx] === 2) {
+                state.target = {x: cx, y: cy};
+                btn.classList.add('active');
+                btn.innerText = '☠️'; // Hack icon
+            } else {
+                state.target = null;
+                btn.classList.remove('active');
+                btn.innerText = '🖐';
+            }
+        }
+
+        function interact() {
+            if(state.target) {
+                if(state.neon < 25) {
+                    tg.showAlert("Low Energy! Need 25.");
+                    tg.sendData(JSON.stringify({act:'buy_neon'}));
+                    return;
+                }
+                startHack();
+            }
+        }
+
+        function draw() {
+            // BG
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0,0,width,height);
+            
+            ctx.save();
+            ctx.translate(-state.cam.x, -state.cam.y);
+
+            // Draw Map
+            for(let y=0; y<MAP_SIZE; y++){
+                for(let x=0; x<MAP_SIZE; x++){
+                    let t = map[y][x];
+                    let px = x*TILE; let py = y*TILE;
+                    
+                    if(t===1) { // Wall
+                        ctx.fillStyle = '#222'; ctx.fillRect(px,py,TILE,TILE);
+                        ctx.strokeStyle = '#0f0'; ctx.lineWidth=0.5; ctx.strokeRect(px,py,TILE,TILE);
+                    } else if (t===2) { // Loot
+                        ctx.fillStyle = '#f05'; 
+                        ctx.shadowBlur=20; ctx.shadowColor='#f05';
+                        ctx.fillRect(px+10, py+10, 20, 20);
+                        ctx.shadowBlur=0;
+                    } else { // Floor
+                        // Grid effect
+                        if(x%2==0 && y%2==0) {
+                             ctx.fillStyle = '#111'; ctx.fillRect(px,py,TILE,TILE);
+                        }
+                    }
+                }
+            }
+
+            // Player
+            ctx.fillStyle = '#fff';
+            ctx.shadowBlur=15; ctx.shadowColor='#fff';
+            ctx.beginPath(); ctx.arc(state.player.x+10, state.player.y+10, 8, 0, Math.PI*2); ctx.fill();
+            ctx.shadowBlur=0;
+
+            ctx.restore();
+            requestAnimationFrame(draw);
+        }
+
         function loop() {
             update();
             draw();
             requestAnimationFrame(loop);
         }
 
-        function update() {
-            if (isDialogueOpen) return;
-
-            // Движение (плавное, раз в 5 тиков)
-            gameTick++;
-            if (player.moving && gameTick % 5 === 0) {
-                let nextX = player.x + player.dx;
-                let nextY = player.y + player.dy;
-
-                // Коллизия (стены)
-                if (mapData[nextY] && mapData[nextY][nextX] !== 1) {
-                    player.x = nextX;
-                    player.y = nextY;
-                }
-                
-                checkInteraction();
-            }
-
-            // Камера следит за игроком
-            camera.x = player.x * TILE_SIZE - canvas.width / 2;
-            camera.y = player.y * TILE_SIZE - canvas.height / 2;
-        }
-
-        function checkInteraction() {
-            nearbyObject = null;
-            // Проверяем соседей (верх, низ, лево, право)
-            const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
-            for (let d of dirs) {
-                let tx = player.x + d[0];
-                let ty = player.y + d[1];
-                if (mapData[ty] && mapData[ty][tx] > 1) {
-                    nearbyObject = { id: mapData[ty][tx], x: tx, y: ty };
-                    break;
-                }
-            }
-
-            // Подсвечиваем кнопку
-            const btn = document.getElementById('btnInteract');
-            if (nearbyObject) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        }
-
-        function draw() {
-            // Очистка
-            ctx.fillStyle = '#050505';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Рендер карты
-            const startCol = Math.floor(camera.x / TILE_SIZE);
-            const endCol = startCol + (canvas.width / TILE_SIZE) + 1;
-            const startRow = Math.floor(camera.y / TILE_SIZE);
-            const endRow = startRow + (canvas.height / TILE_SIZE) + 1;
-
-            const offsetX = -camera.x + startCol * TILE_SIZE;
-            const offsetY = -camera.y + startRow * TILE_SIZE;
-
-            for (let c = startCol; c <= endCol; c++) {
-                for (let r = startRow; r <= endRow; r++) {
-                    if (r >= 0 && r < mapData.length && c >= 0 && c < mapData[0].length) {
-                        let tile = mapData[r][c];
-                        let x = (c - startCol) * TILE_SIZE + offsetX;
-                        let y = (r - startRow) * TILE_SIZE + offsetY;
-
-                        // Пол
-                        if (tile === 0) {
-                            ctx.fillStyle = '#111';
-                            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-                            // Сетка
-                            ctx.strokeStyle = '#222';
-                            ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
-                        }
-                        // Стена
-                        else if (tile === 1) {
-                            ctx.fillStyle = '#222';
-                            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-                            ctx.shadowBlur = 10;
-                            ctx.shadowColor = 'rgba(0, 255, 255, 0.5)';
-                            ctx.strokeStyle = '#0ff';
-                            ctx.strokeRect(x+5, y+5, TILE_SIZE-10, TILE_SIZE-10);
-                            ctx.shadowBlur = 0;
-                        }
-                        // Сундук
-                        else if (tile === 2) {
-                            ctx.fillStyle = '#330033';
-                            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-                            ctx.font = '24px monospace';
-                            ctx.fillStyle = '#f0f';
-                            ctx.fillText('🎁', x + 5, y + 30);
-                        }
-                        // NPC
-                        else if (tile === 3) {
-                            ctx.font = '24px monospace';
-                            ctx.fillText('🤖', x + 5, y + 30);
-                        }
-                    }
-                }
-            }
-
-            // Рендер игрока
-            let px = player.x * TILE_SIZE - camera.x;
-            let py = player.y * TILE_SIZE - camera.y;
-            
-            ctx.fillStyle = player.color;
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = player.color;
-            ctx.fillRect(px + 10, py + 10, 20, 20); // Тело
-            ctx.shadowBlur = 0;
-            
-            // Глаза
-            ctx.fillStyle = '#000';
-            ctx.fillRect(px + 15, py + 15, 4, 4);
-            ctx.fillRect(px + 22, py + 15, 4, 4);
-        }
-
-        // --- УПРАВЛЕНИЕ ---
-        function startMove(dx, dy) {
-            player.dx = dx;
-            player.dy = dy;
-            player.moving = true;
-        }
-
-        function stopMove() {
-            player.moving = false;
-        }
-
-        // Поддержка клавиатуры (для ПК)
-        window.addEventListener('keydown', (e) => {
-            if(e.key === 'ArrowUp') startMove(0, -1);
-            if(e.key === 'ArrowDown') startMove(0, 1);
-            if(e.key === 'ArrowLeft') startMove(-1, 0);
-            if(e.key === 'ArrowRight') startMove(1, 0);
-            if(e.key === ' ' || e.key === 'Enter') interact();
-        });
-
-        window.addEventListener('keyup', (e) => stopMove());
-
-        // --- ЛОГИКА ВЗАИМОДЕЙСТВИЯ ---
-        function interact() {
-            if (!nearbyObject) return;
-
-            const objData = objects[nearbyObject.id];
-            
-            // 1. NPC Диалог
-            if (objData.type === 'npc') {
-                showDialogue([objData.text, "Кстати, в пустошах видел сундук...", "Удачи, раннер."]);
-            }
-            
-            // 2. Сундук (Генерация AI)
-            else if (objData.type === 'loot') {
-                if (player.neon >= 25) {
-                    showDialogue(["Взлом системы...", "Генерация объекта..."]);
-                    // Отправляем сигнал боту
-                    setTimeout(() => {
-                         tg.sendData(JSON.stringify({ act: 'gacha' }));
-                    }, 2000);
-                } else {
-                    showDialogue(["ОШИБКА ДОСТУПА", "Недостаточно энергии (Нужно 25⚡)"]);
-                }
-            }
-        }
-
-        // --- ДИАЛОГОВАЯ СИСТЕМА ---
-        function showDialogue(lines) {
-            isDialogueOpen = true;
-            dialogueQueue = lines;
-            document.getElementById('dialogue-box').style.display = 'block';
-            nextDialogue();
-        }
-
-        function nextDialogue() {
-            if (dialogueQueue.length === 0) {
-                // Конец диалога
-                isDialogueOpen = false;
-                document.getElementById('dialogue-box').style.display = 'none';
-                return;
-            }
-
-            const text = dialogueQueue.shift();
-            const el = document.getElementById('dialogue-text');
-            el.innerHTML = '';
-            
-            // Эффект печатной машинки
-            let i = 0;
-            const interval = setInterval(() => {
-                el.innerHTML += text.charAt(i);
-                i++;
-                if (i >= text.length) clearInterval(interval);
-            }, 30);
-        }
-
-        // Старт
-        showDialogue(["Система загружена...", "Найди источник сигнала.", "Используй стрелки для движения."]);
+        // Init
+        document.getElementById('uNeon').innerText = state.neon;
         loop();
 
     </script>
