@@ -3,168 +3,401 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Symbiosis Interface</title>
-    <!-- Подключаем скрипт Телеграма -->
+    <title>Symbiosis RPG: Open World</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
         :root {
-            --neon-green: #00ff9d;
-            --neon-purple: #bc13fe;
+            --neon-green: #0f0;
+            --neon-pink: #f0f;
             --bg-color: #050505;
-            --card-bg: #1a1a1a;
         }
+
         body {
             background-color: var(--bg-color);
-            color: white;
-            font-family: 'Courier New', monospace;
             margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-        h1 {
-            color: var(--neon-green);
-            text-shadow: 0 0 10px var(--neon-green);
-            font-size: 24px;
-            margin-bottom: 5px;
-        }
-        .subtitle {
-            color: #888;
-            font-size: 12px;
-            margin-bottom: 30px;
-        }
-        
-        /* КАРТОЧКА БАЛАНСА */
-        .stats-card {
-            background: var(--card-bg);
-            border: 1px solid var(--neon-purple);
-            border-radius: 12px;
-            padding: 15px;
-            width: 100%;
-            max-width: 300px;
-            text-align: center;
-            box-shadow: 0 0 15px rgba(188, 19, 254, 0.2);
-            margin-bottom: 30px;
-        }
-        .neon-count {
-            font-size: 36px;
-            font-weight: bold;
-            color: white;
-        }
-        .label {
-            color: var(--neon-purple);
-            font-size: 14px;
-            text-transform: uppercase;
+            overflow: hidden;
+            font-family: 'VT323', monospace;
+            touch-action: none; /* Отключаем зум пальцами */
         }
 
-        /* КНОПКИ */
-        .btn {
-            background: transparent;
+        /* ИГРОВОЙ ЭКРАН (CANVAS) */
+        #gameCanvas {
+            display: block;
+            image-rendering: pixelated; /* Пиксель-арт стиль */
+        }
+
+        /* CRT ЭФФЕКТ (Старый монитор) */
+        .crt-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* ИНТЕРФЕЙС (UI) */
+        #ui-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+
+        /* ДИАЛОГОВОЕ ОКНО */
+        #dialogue-box {
+            background: rgba(0, 0, 0, 0.85);
             border: 2px solid var(--neon-green);
             color: var(--neon-green);
-            padding: 15px 30px;
-            font-size: 16px;
-            font-family: inherit;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            max-width: 300px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            transition: all 0.2s;
-            text-transform: uppercase;
-            position: relative;
-            overflow: hidden;
-        }
-        .btn:active {
-            background: var(--neon-green);
-            color: black;
-            transform: scale(0.98);
-        }
-        
-        .btn-donate {
-            border-color: var(--neon-purple);
-            color: var(--neon-purple);
-        }
-        .btn-donate:active {
-            background: var(--neon-purple);
-            color: white;
-        }
-
-        /* Анимация загрузки */
-        #loader {
+            padding: 15px;
+            margin: 10px;
+            font-size: 20px;
+            min-height: 80px;
+            text-shadow: 0 0 5px var(--neon-green);
             display: none;
-            margin-top: 20px;
-            color: #fff;
-            animation: blink 1s infinite;
+            pointer-events: auto;
         }
-        @keyframes blink { 50% { opacity: 0.5; } }
 
+        /* УПРАВЛЕНИЕ (ДЖОЙСТИК) */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 20px;
+            pointer-events: auto;
+        }
+
+        .d-pad {
+            width: 120px; height: 120px;
+            position: relative;
+        }
+
+        .d-btn {
+            position: absolute;
+            width: 40px; height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; color: white;
+            user-select: none;
+        }
+        .d-btn:active { background: var(--neon-green); color: black; }
+        
+        .btn-up { top: 0; left: 40px; }
+        .btn-down { bottom: 0; left: 40px; }
+        .btn-left { top: 40px; left: 0; }
+        .btn-right { top: 40px; right: 0; }
+
+        .action-btn {
+            width: 80px; height: 80px;
+            background: rgba(255, 0, 85, 0.2);
+            border: 2px solid var(--neon-pink);
+            border-radius: 50%;
+            color: var(--neon-pink);
+            font-size: 24px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 15px var(--neon-pink);
+            opacity: 0.5;
+            transition: 0.2s;
+        }
+        .action-btn.active { opacity: 1; transform: scale(1.1); background: var(--neon-pink); color: white; cursor: pointer; }
+
+        /* HUD */
+        .hud {
+            padding: 10px;
+            color: white;
+            font-size: 18px;
+            text-shadow: 1px 1px 0 #000;
+        }
     </style>
 </head>
 <body>
 
-    <h1>SYMBIOSIS CORE</h1>
-    <div class="subtitle">Neural Network RPG v1.0</div>
+    <div class="crt-overlay"></div>
+    <canvas id="gameCanvas"></canvas>
 
-    <div class="stats-card">
-        <div class="label">Энергия (Neon)</div>
-        <div class="neon-count" id="neonVal">50</div>
+    <div id="ui-layer">
+        <div class="hud">
+            <div>👤 <span id="pName">Runner</span></div>
+            <div>⚡ <span id="pNeon">100</span></div>
+        </div>
+
+        <div id="dialogue-box" onclick="nextDialogue()">
+            <div id="dialogue-text">System booting...</div>
+            <div style="font-size: 12px; color: #888; margin-top:5px; text-align: right;">[TAP TO CONTINUE]</div>
+        </div>
+
+        <div class="controls">
+            <div class="d-pad">
+                <div class="d-btn btn-up" ontouchstart="startMove(0, -1)" ontouchend="stopMove()">▲</div>
+                <div class="d-btn btn-down" ontouchstart="startMove(0, 1)" ontouchend="stopMove()">▼</div>
+                <div class="d-btn btn-left" ontouchstart="startMove(-1, 0)" ontouchend="stopMove()">◀</div>
+                <div class="d-btn btn-right" ontouchstart="startMove(1, 0)" ontouchend="stopMove()">▶</div>
+            </div>
+
+            <div class="action-btn" id="btnInteract" onclick="interact()">
+                🖐
+            </div>
+        </div>
     </div>
 
-    <button class="btn" onclick="generateItem()">
-        🔮 Синтез (25 Neon)
-    </button>
-
-    <button class="btn btn-donate" onclick="buyNeon()">
-        ⚡ Купить Энергию
-    </button>
-
-    <div id="loader">Processing Neural Data...</div>
-
     <script>
-        // Инициализация WebApp
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Раскрыть на весь экран
-        tg.ready();
+        tg.expand();
 
-        // Локальное состояние (для визуала)
-        let neon = 50;
+        // --- ДВИЖОК ИГРЫ ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-        // Отправка данных боту
-        function sendData(action) {
-            const data = {
-                act: action,
-                timestamp: Date.now()
-            };
-            // Эта команда закрывает WebApp и отправляет JSON боту
-            tg.sendData(JSON.stringify(data));
+        // Настройки
+        const TILE_SIZE = 40;
+        const VIEW_W = Math.ceil(window.innerWidth / TILE_SIZE) + 2;
+        const VIEW_H = Math.ceil(window.innerHeight / TILE_SIZE) + 2;
+
+        // Состояние
+        let player = { x: 5, y: 5, color: '#0f0', moving: false, dx: 0, dy: 0, neon: 100 };
+        let camera = { x: 0, y: 0 };
+        let gameTick = 0;
+        let dialogueQueue = [];
+        let isDialogueOpen = false;
+        let nearbyObject = null; // Объект, с которым можно взаимодействовать
+
+        // Карта (0=пол, 1=стена, 2=сундук, 3=NPC, 4=декор)
+        // 20x20 карта
+        const mapData = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,1],
+            [1,0,3,0,0,0,1,0,2,0,0,0,0,1,0,0,0,0,0,1],
+            [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,0,0,1,1,1,1,1,1,0,0,1,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,3,0,0,1],
+            [1,0,0,0,0,0,0,0,2,0,0,0,0,1,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        // База объектов (тексты, логика)
+        const objects = {
+            2: { name: "LootBox", type: "loot", text: "Взломать контейнер? (25 Neon)" },
+            3: { name: "Hacker", type: "npc", text: "Псс... Этот город - всего лишь код. А мы - баги." }
+        };
+
+        // --- ИНИЦИАЛИЗАЦИЯ ---
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- ИГРОВОЙ ЦИКЛ ---
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
         }
 
-        function generateItem() {
-            if (neon < 25) {
-                tg.showAlert("Недостаточно энергии! Купите Neon.");
-                return;
+        function update() {
+            if (isDialogueOpen) return;
+
+            // Движение (плавное, раз в 5 тиков)
+            gameTick++;
+            if (player.moving && gameTick % 5 === 0) {
+                let nextX = player.x + player.dx;
+                let nextY = player.y + player.dy;
+
+                // Коллизия (стены)
+                if (mapData[nextY] && mapData[nextY][nextX] !== 1) {
+                    player.x = nextX;
+                    player.y = nextY;
+                }
+                
+                checkInteraction();
+            }
+
+            // Камера следит за игроком
+            camera.x = player.x * TILE_SIZE - canvas.width / 2;
+            camera.y = player.y * TILE_SIZE - canvas.height / 2;
+        }
+
+        function checkInteraction() {
+            nearbyObject = null;
+            // Проверяем соседей (верх, низ, лево, право)
+            const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+            for (let d of dirs) {
+                let tx = player.x + d[0];
+                let ty = player.y + d[1];
+                if (mapData[ty] && mapData[ty][tx] > 1) {
+                    nearbyObject = { id: mapData[ty][tx], x: tx, y: ty };
+                    break;
+                }
+            }
+
+            // Подсвечиваем кнопку
+            const btn = document.getElementById('btnInteract');
+            if (nearbyObject) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+
+        function draw() {
+            // Очистка
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Рендер карты
+            const startCol = Math.floor(camera.x / TILE_SIZE);
+            const endCol = startCol + (canvas.width / TILE_SIZE) + 1;
+            const startRow = Math.floor(camera.y / TILE_SIZE);
+            const endRow = startRow + (canvas.height / TILE_SIZE) + 1;
+
+            const offsetX = -camera.x + startCol * TILE_SIZE;
+            const offsetY = -camera.y + startRow * TILE_SIZE;
+
+            for (let c = startCol; c <= endCol; c++) {
+                for (let r = startRow; r <= endRow; r++) {
+                    if (r >= 0 && r < mapData.length && c >= 0 && c < mapData[0].length) {
+                        let tile = mapData[r][c];
+                        let x = (c - startCol) * TILE_SIZE + offsetX;
+                        let y = (r - startRow) * TILE_SIZE + offsetY;
+
+                        // Пол
+                        if (tile === 0) {
+                            ctx.fillStyle = '#111';
+                            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                            // Сетка
+                            ctx.strokeStyle = '#222';
+                            ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+                        }
+                        // Стена
+                        else if (tile === 1) {
+                            ctx.fillStyle = '#222';
+                            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                            ctx.shadowBlur = 10;
+                            ctx.shadowColor = 'rgba(0, 255, 255, 0.5)';
+                            ctx.strokeStyle = '#0ff';
+                            ctx.strokeRect(x+5, y+5, TILE_SIZE-10, TILE_SIZE-10);
+                            ctx.shadowBlur = 0;
+                        }
+                        // Сундук
+                        else if (tile === 2) {
+                            ctx.fillStyle = '#330033';
+                            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                            ctx.font = '24px monospace';
+                            ctx.fillStyle = '#f0f';
+                            ctx.fillText('🎁', x + 5, y + 30);
+                        }
+                        // NPC
+                        else if (tile === 3) {
+                            ctx.font = '24px monospace';
+                            ctx.fillText('🤖', x + 5, y + 30);
+                        }
+                    }
+                }
+            }
+
+            // Рендер игрока
+            let px = player.x * TILE_SIZE - camera.x;
+            let py = player.y * TILE_SIZE - camera.y;
+            
+            ctx.fillStyle = player.color;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = player.color;
+            ctx.fillRect(px + 10, py + 10, 20, 20); // Тело
+            ctx.shadowBlur = 0;
+            
+            // Глаза
+            ctx.fillStyle = '#000';
+            ctx.fillRect(px + 15, py + 15, 4, 4);
+            ctx.fillRect(px + 22, py + 15, 4, 4);
+        }
+
+        // --- УПРАВЛЕНИЕ ---
+        function startMove(dx, dy) {
+            player.dx = dx;
+            player.dy = dy;
+            player.moving = true;
+        }
+
+        function stopMove() {
+            player.moving = false;
+        }
+
+        // Поддержка клавиатуры (для ПК)
+        window.addEventListener('keydown', (e) => {
+            if(e.key === 'ArrowUp') startMove(0, -1);
+            if(e.key === 'ArrowDown') startMove(0, 1);
+            if(e.key === 'ArrowLeft') startMove(-1, 0);
+            if(e.key === 'ArrowRight') startMove(1, 0);
+            if(e.key === ' ' || e.key === 'Enter') interact();
+        });
+
+        window.addEventListener('keyup', (e) => stopMove());
+
+        // --- ЛОГИКА ВЗАИМОДЕЙСТВИЯ ---
+        function interact() {
+            if (!nearbyObject) return;
+
+            const objData = objects[nearbyObject.id];
+            
+            // 1. NPC Диалог
+            if (objData.type === 'npc') {
+                showDialogue([objData.text, "Кстати, в пустошах видел сундук...", "Удачи, раннер."]);
             }
             
-            // Визуально списываем
-            neon -= 25;
-            document.getElementById('neonVal').innerText = neon;
-            
-            document.getElementById('loader').style.display = 'block';
-            
-            // Отправляем запрос боту
-            sendData('generate');
+            // 2. Сундук (Генерация AI)
+            else if (objData.type === 'loot') {
+                if (player.neon >= 25) {
+                    showDialogue(["Взлом системы...", "Генерация объекта..."]);
+                    // Отправляем сигнал боту
+                    setTimeout(() => {
+                         tg.sendData(JSON.stringify({ act: 'gacha' }));
+                    }, 2000);
+                } else {
+                    showDialogue(["ОШИБКА ДОСТУПА", "Недостаточно энергии (Нужно 25⚡)"]);
+                }
+            }
         }
 
-        function buyNeon() {
-            sendData('buy_neon');
+        // --- ДИАЛОГОВАЯ СИСТЕМА ---
+        function showDialogue(lines) {
+            isDialogueOpen = true;
+            dialogueQueue = lines;
+            document.getElementById('dialogue-box').style.display = 'block';
+            nextDialogue();
         }
 
-        // Настройка темы под Телеграм
-        document.body.style.backgroundColor = tg.themeParams.bg_color || '#050505';
+        function nextDialogue() {
+            if (dialogueQueue.length === 0) {
+                // Конец диалога
+                isDialogueOpen = false;
+                document.getElementById('dialogue-box').style.display = 'none';
+                return;
+            }
+
+            const text = dialogueQueue.shift();
+            const el = document.getElementById('dialogue-text');
+            el.innerHTML = '';
+            
+            // Эффект печатной машинки
+            let i = 0;
+            const interval = setInterval(() => {
+                el.innerHTML += text.charAt(i);
+                i++;
+                if (i >= text.length) clearInterval(interval);
+            }, 30);
+        }
+
+        // Старт
+        showDialogue(["Система загружена...", "Найди источник сигнала.", "Используй стрелки для движения."]);
+        loop();
+
     </script>
 </body>
 </html>
