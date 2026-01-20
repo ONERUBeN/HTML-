@@ -3,353 +3,495 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Symbiosis Ultimate</title>
+    <title>Symbiosis: Visual</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>
+    <!-- Подключаем продвинутые фильтры Pixi -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-filters@5.2.1/dist/pixi-filters.js"></script> 
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap');
 
-        :root {
-            --neon: #00ff9d;
-            --hack: #ff0055;
-            --ui-bg: rgba(0, 10, 5, 0.9);
+        body { 
+            margin: 0; overflow: hidden; background: #050505; 
+            font-family: 'Rajdhani', sans-serif; color: white;
+            user-select: none; -webkit-user-select: none;
         }
 
-        body {
-            background: #000;
-            margin: 0; overflow: hidden;
-            font-family: 'Share Tech Mono', monospace;
-            color: white; user-select: none;
-            -webkit-user-select: none;
-        }
-
-        canvas { display: block; }
-
-        /* BOOT SCREEN */
-        #boot {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 999;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            font-size: 14px; color: var(--neon);
-        }
-
-        /* UI LAYER */
-        #ui {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 10;
-        }
+        /* --- UI LAYER --- */
+        #ui { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10; }
 
         .hud-top {
             position: absolute; top: 10px; left: 10px; right: 10px;
-            display: flex; justify-content: space-between;
-            text-transform: uppercase; text-shadow: 0 0 5px var(--neon);
-            font-size: 18px;
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0, 20, 30, 0.8);
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            border-radius: 12px; padding: 8px 15px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 15px rgba(0, 255, 157, 0.1);
         }
 
-        /* MINIGAME (HACKING) */
-        #hack-ui {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 250px; height: 150px;
-            background: var(--ui-bg);
-            border: 2px solid var(--hack);
-            border-radius: 10px;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
+        .stat-box { display: flex; flex-direction: column; align-items: center; }
+        .stat-label { font-size: 10px; color: #aaa; letter-spacing: 1px; }
+        .stat-val { font-size: 18px; font-weight: bold; color: #fff; text-shadow: 0 0 5px #fff; }
+        .neon-text { color: #00ff9d; text-shadow: 0 0 8px #00ff9d; }
+
+        /* ACTION BUTTONS */
+        .btn-container {
+            position: absolute; bottom: 30px; right: 20px;
+            display: flex; flex-direction: column; gap: 15px;
             pointer-events: auto;
-            box-shadow: 0 0 30px rgba(255, 0, 85, 0.3);
-        }
-        
-        .hack-bar-bg {
-            width: 200px; height: 20px; background: #333;
-            border-radius: 10px; overflow: hidden; position: relative;
-            margin: 20px 0;
-        }
-        .hack-zone {
-            position: absolute; left: 70%; width: 30px; height: 100%;
-            background: var(--neon); opacity: 0.5;
-        }
-        .hack-cursor {
-            position: absolute; left: 0; width: 5px; height: 100%;
-            background: #fff; box-shadow: 0 0 10px #fff;
-        }
-        .hack-btn {
-            background: var(--hack); color: white; border: none;
-            padding: 10px 30px; font-family: inherit; font-size: 16px;
-            cursor: pointer; border-radius: 5px;
         }
 
-        /* CONTROLS */
-        #joystick-area {
-            position: absolute; bottom: 50px; left: 50px;
-            width: 100px; height: 100px;
-            border: 2px dashed rgba(255,255,255,0.2);
+        .fab {
+            width: 60px; height: 60px; border-radius: 50%;
+            background: rgba(0,0,0,0.6); border: 2px solid #444;
+            color: #fff; font-size: 24px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+        .fab:active { transform: scale(0.9); }
+        
+        .fab-main {
+            width: 80px; height: 80px; font-size: 32px;
+            border-color: #00ff9d; color: #00ff9d;
+            background: radial-gradient(circle, rgba(0,255,157,0.2) 0%, rgba(0,0,0,0.8) 70%);
+            box-shadow: 0 0 20px rgba(0, 255, 157, 0.3);
+        }
+        .fab-shop { border-color: gold; color: gold; }
+
+        /* JOYSTICK */
+        #joystick-zone {
+            position: absolute; bottom: 40px; left: 40px;
+            width: 120px; height: 120px;
+            border: 2px dashed rgba(255,255,255,0.1);
             border-radius: 50%; pointer-events: auto;
         }
         #stick {
             position: absolute; top: 50%; left: 50%;
-            width: 40px; height: 40px; background: rgba(0,255,157,0.5);
-            border-radius: 50%; transform: translate(-50%,-50%);
+            width: 50px; height: 50px;
+            background: rgba(0, 255, 157, 0.4);
+            border: 1px solid #00ff9d; border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px rgba(0, 255, 157, 0.5);
             pointer-events: none;
         }
 
-        #action-btn {
-            position: absolute; bottom: 60px; right: 40px;
-            width: 80px; height: 80px;
-            background: rgba(0,0,0,0.5);
-            border: 2px solid white; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 30px; opacity: 0.3; transition: 0.2s;
-            pointer-events: auto;
+        /* MODAL (SHOP) */
+        #shop-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 100;
+            display: none; flex-direction: column; padding: 20px; box-sizing: border-box;
+            pointer-events: auto; animation: fade-in 0.3s;
         }
-        #action-btn.active {
-            opacity: 1; background: var(--hack); border-color: var(--hack);
-            box-shadow: 0 0 20px var(--hack); transform: scale(1.1);
+        
+        .shop-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px;
         }
+        .close-btn { font-size: 24px; color: #ff0055; cursor: pointer; }
+
+        .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .shop-item {
+            background: #111; border: 1px solid #333; border-radius: 8px;
+            padding: 15px; text-align: center; transition: 0.2s;
+        }
+        .shop-item.premium { border-color: gold; background: linear-gradient(45deg, #111, #221a00); }
+        .shop-item:active { transform: scale(0.98); border-color: #fff; }
+        
+        .item-icon { font-size: 30px; margin-bottom: 5px; display: block; }
+        .item-name { font-size: 14px; font-weight: bold; display: block; }
+        .item-price { font-size: 12px; color: gold; margin-top: 5px; display: block; }
+
+        @keyframes fade-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        /* NOTIFICATIONS */
+        #notif-area {
+            position: absolute; top: 80px; width: 100%; text-align: center;
+            pointer-events: none;
+        }
+        .notif {
+            display: inline-block; background: rgba(0,0,0,0.8);
+            border: 1px solid #00ff9d; color: #00ff9d;
+            padding: 5px 15px; border-radius: 20px; margin-top: 5px;
+            animation: slide-up 2s forwards;
+        }
+        @keyframes slide-up { 0% {opacity:0; transform:translateY(10px)} 20% {opacity:1; transform:translateY(0)} 80% {opacity:1} 100% {opacity:0; transform:translateY(-20px)} }
 
     </style>
 </head>
 <body>
-    
-    <!-- BOOT SCREEN -->
-    <div id="boot">
-        <div>INITIALIZING NEURAL LINK...</div>
-        <div id="boot-log" style="color:#666; font-size:10px; margin-top:10px">Connecting...</div>
-    </div>
 
-    <!-- HACKING MINIGAME -->
-    <div id="hack-ui">
-        <div style="color:var(--hack)">SECURITY BREACH</div>
-        <div class="hack-bar-bg">
-            <div class="hack-zone"></div>
-            <div class="hack-cursor" id="cursor"></div>
-        </div>
-        <button class="hack-btn" onmousedown="tryHack()">HACK</button>
-    </div>
-
-    <canvas id="game"></canvas>
-
+    <!-- UI -->
     <div id="ui">
         <div class="hud-top">
-            <div>USER: <span id="uName">GUEST</span></div>
-            <div style="color:var(--neon)">NEON: <span id="uNeon">...</span></div>
+            <div class="stat-box">
+                <span class="stat-label">OPERATIVE</span>
+                <span class="stat-val" id="u-name">GUEST</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-label">NEON</span>
+                <span class="stat-val neon-text">⚡ <span id="u-neon">100</span></span>
+            </div>
         </div>
 
-        <div id="joystick-area"><div id="stick"></div></div>
-        <div id="action-btn" onclick="interact()">🖐</div>
+        <div id="notif-area"></div>
+
+        <div id="joystick-zone"><div id="stick"></div></div>
+
+        <div class="btn-container">
+            <div class="fab fab-shop" onclick="toggleShop(true)">🛒</div>
+            <div class="fab fab-main" id="btn-hack" onclick="doHack()">⚡</div>
+        </div>
+    </div>
+
+    <!-- SHOP MODAL -->
+    <div id="shop-modal">
+        <div class="shop-header">
+            <h2 style="margin:0; color:gold;">BLACK MARKET</h2>
+            <div class="close-btn" onclick="toggleShop(false)">✕</div>
+        </div>
+        <div class="shop-grid">
+            <div class="shop-item" onclick="buyItem('neon_pack')">
+                <span class="item-icon">🔋</span>
+                <span class="item-name">NEON PACK</span>
+                <span class="item-price">1 STAR</span>
+            </div>
+            <div class="shop-item premium" onclick="buyItem('skin_gold')">
+                <span class="item-icon">⚜️</span>
+                <span class="item-name">GOLD DRONE</span>
+                <span class="item-price">50 STARS</span>
+            </div>
+            <div class="shop-item premium" onclick="buyItem('skin_cyber')">
+                <span class="item-icon">💠</span>
+                <span class="item-name">CYBER AURA</span>
+                <span class="item-price">25 STARS</span>
+            </div>
+            <div class="shop-item" onclick="buyItem('boost_luck')">
+                <span class="item-icon">🍀</span>
+                <span class="item-name">LUCK CHIP</span>
+                <span class="item-price">10 STARS</span>
+            </div>
+        </div>
+        <p style="text-align:center; color:#666; font-size:12px; margin-top:20px;">
+            Покупки дают визуальные эффекты и статус.
+        </p>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        const user = tg.initDataUnsafe.user || { first_name: "Operative" };
-        document.getElementById('uName').innerText = user.first_name.toUpperCase();
+        const user = tg.initDataUnsafe.user || { first_name: "Runner" };
+        document.getElementById('u-name').innerText = user.first_name.toUpperCase().substring(0, 8);
 
-        // --- ENGINE SETUP ---
-        const canvas = document.getElementById('game');
-        const ctx = canvas.getContext('2d');
-        let width, height;
-        const TILE = 40;
+        // --- PIXI JS ENGINE ---
+        const app = new PIXI.Application({
+            resizeTo: window,
+            backgroundColor: 0x050505,
+            antialias: true
+        });
+        document.body.appendChild(app.view);
+
+        // LAYERS
+        const bgLayer = new PIXI.Container();
+        const gameLayer = new PIXI.Container();
+        const uiLayer = new PIXI.Container(); // For floating text in canvas
+        app.stage.addChild(bgLayer, gameLayer, uiLayer);
+
+        // --- ASSETS GENERATION (Procedural Graphics) ---
+        function createGlowTexture(color) {
+            const c = document.createElement('canvas');
+            c.width = 64; c.height = 64;
+            const ctx = c.getContext('2d');
+            const grad = ctx.createRadialGradient(32,32,0, 32,32,32);
+            grad.addColorStop(0, color);
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0,0,64,64);
+            return PIXI.Texture.from(c);
+        }
+
+        // --- VISUALS: STARFIELD BACKGROUND ---
+        const stars = [];
+        for(let i=0; i<100; i++) {
+            const star = new PIXI.Graphics();
+            star.beginFill(0xffffff, Math.random());
+            star.drawCircle(0,0, Math.random() * 1.5);
+            star.endFill();
+            star.x = Math.random() * app.screen.width;
+            star.y = Math.random() * app.screen.height;
+            star.speed = Math.random() * 0.5;
+            bgLayer.addChild(star);
+            stars.push(star);
+        }
+
+        // --- GAME OBJECTS ---
+        
+        // Player (Drone)
+        const player = new PIXI.Container();
+        player.x = app.screen.width / 2;
+        player.y = app.screen.height / 2;
+        
+        const droneBody = new PIXI.Graphics();
+        droneBody.lineStyle(2, 0x00ff9d);
+        droneBody.beginFill(0x000000);
+        droneBody.moveTo(0, -15);
+        droneBody.lineTo(12, 10);
+        droneBody.lineTo(0, 5);
+        droneBody.lineTo(-12, 10);
+        droneBody.closePath();
+        droneBody.endFill();
+        
+        const droneGlow = new PIXI.Sprite(createGlowTexture('rgba(0, 255, 157, 0.5)'));
+        droneGlow.anchor.set(0.5);
+        droneGlow.scale.set(1.5);
+        
+        // Pulse ring (Scanner)
+        const scannerRing = new PIXI.Graphics();
+        
+        player.addChild(droneGlow, scannerRing, droneBody);
+        gameLayer.addChild(player);
+
+        // Loot Objects
+        const lootItems = [];
+        const LOOT_COUNT = 15;
+        
+        for(let i=0; i<LOOT_COUNT; i++) {
+            createLoot();
+        }
+
+        function createLoot() {
+            const loot = new PIXI.Graphics();
+            const isRare = Math.random() > 0.8;
+            const color = isRare ? 0xffaa00 : 0xff0055;
+            
+            loot.lineStyle(2, color);
+            loot.drawRect(-10, -10, 20, 20); // Box shape
+            
+            // Inner core
+            loot.beginFill(color, 0.5);
+            loot.drawRect(-4, -4, 8, 8);
+            loot.endFill();
+
+            loot.x = (Math.random() * 2000) - 1000;
+            loot.y = (Math.random() * 2000) - 1000;
+            loot.rotation = Math.random();
+            loot.type = isRare ? 'rare' : 'common';
+            
+            lootItems.push(loot);
+            gameLayer.addChild(loot);
+        }
 
         // --- STATE ---
         let state = {
-            player: { x: 400, y: 400 },
-            cam: { x: 0, y: 0 },
             neon: 100,
-            target: null, // Объект рядом
-            hacking: false
+            x: 0, y: 0, // Global pos
+            target: null,
+            skin: 'default'
         };
 
-        // --- MAP GENERATION (Procedural-ish) ---
-        const MAP_SIZE = 30;
-        const map = [];
-        for(let y=0; y<MAP_SIZE; y++){
-            let row = [];
-            for(let x=0; x<MAP_SIZE; x++){
-                // Границы
-                if(x==0 || y==0 || x==MAP_SIZE-1 || y==MAP_SIZE-1) row.push(1);
-                // Лут (5% шанс)
-                else if(Math.random() > 0.95) row.push(2); 
-                // Стены (10% шанс)
-                else if(Math.random() > 0.90) row.push(1);
-                else row.push(0);
-            }
-            map.push(row);
-        }
+        // --- INPUTS ---
+        let joy = { active: false, dx: 0, dy: 0, sx: 0, sy: 0 };
+        const stickEl = document.getElementById('stick');
+        const zoneEl = document.getElementById('joystick-zone');
 
-        // --- BOOT SEQUENCE ---
-        setTimeout(() => {
-            const boot = document.getElementById('boot');
-            boot.style.opacity = 0;
-            setTimeout(()=>boot.style.display='none', 1000);
-        }, 1500);
-
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
-        // --- CONTROLS ---
-        let joy = { active:false, dx:0, dy:0, sx:0, sy:0 };
-        const stickArea = document.getElementById('joystick-area');
-        const stick = document.getElementById('stick');
-
-        stickArea.addEventListener('touchstart', e => {
+        zoneEl.addEventListener('touchstart', e => {
             e.preventDefault();
             const t = e.touches[0];
-            joy.active=true; joy.sx=t.clientX; joy.sy=t.clientY;
+            joy.active = true; joy.sx = t.clientX; joy.sy = t.clientY;
         });
 
         window.addEventListener('touchmove', e => {
             if(!joy.active) return;
             const t = e.touches[0];
             const max = 40;
-            let dx = t.clientX - joy.sx;
-            let dy = t.clientY - joy.sy;
+            let dx = t.clientX - joy.sx; let dy = t.clientY - joy.sy;
             let dist = Math.min(Math.sqrt(dx*dx+dy*dy), max);
-            let ang = Math.atan2(dy, dx);
-            stick.style.transform = `translate(calc(-50% + ${Math.cos(ang)*dist}px), calc(-50% + ${Math.sin(ang)*dist}px))`;
-            joy.dx = Math.cos(ang)*(dist/max);
-            joy.dy = Math.sin(ang)*(dist/max);
+            let angle = Math.atan2(dy, dx);
+            stickEl.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px))`;
+            joy.dx = Math.cos(angle)*(dist/max); joy.dy = Math.sin(angle)*(dist/max);
+            
+            // Rotate player
+            player.rotation = angle + Math.PI/2;
         });
 
         window.addEventListener('touchend', () => {
-            joy.active=false; joy.dx=0; joy.dy=0;
-            stick.style.transform = `translate(-50%,-50%)`;
+            joy.active = false; joy.dx = 0; joy.dy = 0;
+            stickEl.style.transform = `translate(-50%, -50%)`;
         });
 
-        // --- HACKING MINIGAME ---
-        let hackCursorPos = 0;
-        let hackDir = 1;
+        // --- GAME LOOP ---
+        let scanRadius = 0;
         
-        function startHack() {
-            state.hacking = true;
-            document.getElementById('hack-ui').style.display = 'flex';
-        }
+        app.ticker.add((delta) => {
+            // Move Stars (Parallax)
+            stars.forEach(s => {
+                s.y += s.speed * delta;
+                if(s.y > app.screen.height) s.y = 0;
+            });
 
-        function tryHack() {
-            // Зона успеха примерно 70-85% (140px - 170px из 200px)
-            if(hackCursorPos > 70 && hackCursorPos < 85) {
-                // SUCCESS
-                tg.sendData(JSON.stringify({act: 'gacha'}));
-                state.neon -= 25; // Visual feedback
-                document.getElementById('uNeon').innerText = state.neon;
-                // Удаляем сундук с карты
-                if(state.target) map[state.target.y][state.target.x] = 0;
-            } else {
-                tg.showAlert("HACK FAILED! Security alerted.");
-            }
-            state.hacking = false;
-            document.getElementById('hack-ui').style.display = 'none';
-        }
-
-        function updateHack() {
-            if(!state.hacking) return;
-            hackCursorPos += 2 * hackDir;
-            if(hackCursorPos > 100 || hackCursorPos < 0) hackDir *= -1;
-            document.getElementById('cursor').style.left = hackCursorPos + '%';
-        }
-
-        // --- CORE LOOP ---
-        function update() {
-            if(state.hacking) {
-                updateHack();
-                return;
-            }
-
-            // Move Player
+            // Move World (Instead of player moving)
             if(joy.active) {
-                let nx = state.player.x + joy.dx * 5;
-                let ny = state.player.y + joy.dy * 5;
-                // Collsion
-                let cx = Math.floor((nx+10)/TILE);
-                let cy = Math.floor((ny+10)/TILE);
-                if(map[cy] && map[cy][cx] !== 1) {
-                    state.player.x = nx; state.player.y = ny;
-                }
+                const speed = 5 * delta;
+                state.x += joy.dx * speed;
+                state.y += joy.dy * speed;
+                
+                // Move loot opposite to player
+                lootItems.forEach(l => {
+                    l.x -= joy.dx * speed;
+                    l.y -= joy.dy * speed;
+                });
+                
+                // Trail particles
+                if(Math.random() > 0.8) spawnTrail();
             }
 
-            // Camera Follow
-            state.cam.x += (state.player.x - width/2 - state.cam.x) * 0.1;
-            state.cam.y += (state.player.y - height/2 - state.cam.y) * 0.1;
+            // Scanner Effect
+            scanRadius += 2 * delta;
+            if(scanRadius > 150) scanRadius = 0;
+            scannerRing.clear();
+            scannerRing.lineStyle(1, 0x00ff9d, 1 - (scanRadius/150));
+            scannerRing.drawCircle(0,0, scanRadius);
 
-            // Check Interactions
-            let cx = Math.floor((state.player.x+10)/TILE);
-            let cy = Math.floor((state.player.y+10)/TILE);
-            let btn = document.getElementById('action-btn');
+            // Update Loot & Check Collision
+            let nearest = null;
+            let minDst = 100;
 
-            if(map[cy][cx] === 2) {
-                state.target = {x: cx, y: cy};
-                btn.classList.add('active');
-                btn.innerText = '☠️'; // Hack icon
+            lootItems.forEach(l => {
+                l.rotation += 0.02 * delta;
+                const dist = Math.hypot(l.x - player.x, l.y - player.y);
+                
+                // Visibility check (Fog of war feeling)
+                l.alpha = Math.max(0, 1 - (dist / 300));
+                
+                if(dist < 50) {
+                    nearest = l;
+                    minDst = dist;
+                }
+            });
+
+            // Interact Button Feedback
+            const btn = document.getElementById('btn-hack');
+            if(nearest) {
+                state.target = nearest;
+                btn.style.boxShadow = "0 0 30px #fff";
+                btn.style.borderColor = "#fff";
+                btn.innerText = "🖐";
             } else {
                 state.target = null;
-                btn.classList.remove('active');
-                btn.innerText = '🖐';
+                btn.style.boxShadow = "0 0 20px rgba(0, 255, 157, 0.3)";
+                btn.style.borderColor = "#00ff9d";
+                btn.innerText = "⚡";
+            }
+            
+            // Particles update
+            updateTrails(delta);
+        });
+
+        const trails = [];
+        function spawnTrail() {
+            const t = new PIXI.Graphics();
+            t.beginFill(state.skin === 'gold' ? 0xffd700 : 0x00ff9d);
+            t.drawCircle(0,0,3);
+            t.endFill();
+            t.x = player.x; t.y = player.y;
+            gameLayer.addChildAt(t, 0); // Behind player
+            trails.push(t);
+        }
+
+        function updateTrails(dt) {
+            for(let i=trails.length-1; i>=0; i--) {
+                const t = trails[i];
+                t.x -= joy.dx * 5 * dt; // Move with world
+                t.y -= joy.dy * 5 * dt;
+                t.alpha -= 0.05 * dt;
+                if(t.alpha <= 0) {
+                    gameLayer.removeChild(t);
+                    trails.splice(i, 1);
+                }
             }
         }
 
-        function interact() {
+        // --- ACTIONS ---
+        function doHack() {
             if(state.target) {
                 if(state.neon < 25) {
-                    tg.showAlert("Low Energy! Need 25.");
-                    tg.sendData(JSON.stringify({act:'buy_neon'}));
+                    showNotif("LOW ENERGY! ⚡");
+                    toggleShop(true);
                     return;
                 }
-                startHack();
+                
+                // Visual FX
+                createExplosion(state.target.x, state.target.y);
+                state.target.x = (Math.random() * 2000) - 1000; // Respawn far away
+                state.target.y = (Math.random() * 2000) - 1000;
+                
+                // Logic
+                state.neon -= 25;
+                updateUI();
+                tg.sendData(JSON.stringify({act: 'gacha'}));
+                showNotif("HACKING... 🔓");
+            } else {
+                showNotif("SCANNING AREA... 📡");
             }
         }
 
-        function draw() {
-            // BG
-            ctx.fillStyle = '#050505';
-            ctx.fillRect(0,0,width,height);
+        function createExplosion(x, y) {
+            // Simple expansion ring
+            const r = new PIXI.Graphics();
+            r.lineStyle(2, 0xffffff);
+            r.drawCircle(0,0,10);
+            r.x = x; r.y = y;
+            gameLayer.addChild(r);
             
-            ctx.save();
-            ctx.translate(-state.cam.x, -state.cam.y);
-
-            // Draw Map
-            for(let y=0; y<MAP_SIZE; y++){
-                for(let x=0; x<MAP_SIZE; x++){
-                    let t = map[y][x];
-                    let px = x*TILE; let py = y*TILE;
-                    
-                    if(t===1) { // Wall
-                        ctx.fillStyle = '#222'; ctx.fillRect(px,py,TILE,TILE);
-                        ctx.strokeStyle = '#0f0'; ctx.lineWidth=0.5; ctx.strokeRect(px,py,TILE,TILE);
-                    } else if (t===2) { // Loot
-                        ctx.fillStyle = '#f05'; 
-                        ctx.shadowBlur=20; ctx.shadowColor='#f05';
-                        ctx.fillRect(px+10, py+10, 20, 20);
-                        ctx.shadowBlur=0;
-                    } else { // Floor
-                        // Grid effect
-                        if(x%2==0 && y%2==0) {
-                             ctx.fillStyle = '#111'; ctx.fillRect(px,py,TILE,TILE);
-                        }
-                    }
+            let scale = 1;
+            const anim = setInterval(() => {
+                scale += 0.5;
+                r.scale.set(scale);
+                r.alpha -= 0.1;
+                if(r.alpha <= 0) {
+                    clearInterval(anim);
+                    gameLayer.removeChild(r);
                 }
+            }, 30);
+        }
+
+        function toggleShop(show) {
+            document.getElementById('shop-modal').style.display = show ? 'flex' : 'none';
+        }
+
+        function buyItem(item) {
+            if(item === 'skin_gold') {
+                state.skin = 'gold';
+                droneBody.clear();
+                droneBody.lineStyle(2, 0xffd700);
+                droneBody.beginFill(0x221a00);
+                droneBody.moveTo(0, -15); droneBody.lineTo(12, 10); droneBody.lineTo(0, 5); droneBody.lineTo(-12, 10);
+                droneBody.endFill();
+                showNotif("SKIN EQUIPPED: GOLD ⚜️");
+                toggleShop(false);
+            } 
+            else if (item === 'neon_pack') {
+                tg.sendData(JSON.stringify({act: 'buy_neon'}));
+                toggleShop(false);
             }
-
-            // Player
-            ctx.fillStyle = '#fff';
-            ctx.shadowBlur=15; ctx.shadowColor='#fff';
-            ctx.beginPath(); ctx.arc(state.player.x+10, state.player.y+10, 8, 0, Math.PI*2); ctx.fill();
-            ctx.shadowBlur=0;
-
-            ctx.restore();
-            requestAnimationFrame(draw);
+            else {
+                showNotif("PREMIUM ONLY 🔒");
+            }
         }
 
-        function loop() {
-            update();
-            draw();
-            requestAnimationFrame(loop);
+        function showNotif(text) {
+            const n = document.createElement('div');
+            n.className = 'notif';
+            n.innerText = text;
+            document.getElementById('notif-area').appendChild(n);
+            setTimeout(() => n.remove(), 2000);
         }
 
-        // Init
-        document.getElementById('uNeon').innerText = state.neon;
-        loop();
+        function updateUI() {
+            document.getElementById('u-neon').innerText = state.neon;
+        }
 
     </script>
 </body>
