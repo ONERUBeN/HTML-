@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Symbiosis Architect</title>
-    <!-- Telegram WebApp API -->
+    <!-- Telegram API -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- PixiJS Graphics Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.3/pixi.min.js"></script>
-    <!-- Pixi Filters (Bloom) - Updated Version -->
+    <!-- Pixi Filters (Bloom) -->
     <script src="https://cdn.jsdelivr.net/npm/pixi-filters@5.3.0/dist/pixi-filters.js"></script>
     
     <style>
@@ -164,6 +164,7 @@
     </div>
 
     <script>
+        // Изолируем код для предотвращения конфликтов переменных
         (function() {
             const tg = window.Telegram.WebApp;
             tg.expand();
@@ -181,9 +182,7 @@
                 if(type === 'UI') {
                     // Click sound
                     osc.type = 'sine'; 
-                    osc.frequency.setValueAtTime(1200, now);
-                    osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.1);
-                    gain.gain.setValueAtTime(0.1, now);
+                    osc.frequency.setValueAtTime(800, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
                     osc.start(now); osc.stop(now + 0.1);
                 }
@@ -191,19 +190,16 @@
                     // Success sound
                     osc.type = 'triangle';
                     osc.frequency.setValueAtTime(200, now);
-                    osc.frequency.linearRampToValueAtTime(800, now + 0.1);
-                    gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.linearRampToValueAtTime(0, now + 0.3);
-                    osc.start(now); osc.stop(now + 0.3);
+                    osc.frequency.linearRampToValueAtTime(800, now + 0.15);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.4);
+                    osc.start(now); osc.stop(now + 0.4);
                 }
                 else if(type === 'FAIL') {
                     // Error sound
                     osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(100, now);
-                    osc.frequency.linearRampToValueAtTime(50, now + 0.3);
-                    gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.linearRampToValueAtTime(0, now + 0.3);
-                    osc.start(now); osc.stop(now + 0.3);
+                    osc.frequency.setValueAtTime(150, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.4);
+                    osc.start(now); osc.stop(now + 0.4);
                 }
             }
 
@@ -224,21 +220,14 @@
             app.stage.addChild(bgContainer, gameContainer, fxContainer);
 
             // --- POST-PROCESSING ---
-            // Безопасная инициализация фильтров
+            // Проверка наличия фильтров
             try {
                 if (PIXI.filters && PIXI.filters.AdvancedBloomFilter) {
-                    const bloom = new PIXI.filters.AdvancedBloomFilter({ 
-                        threshold: 0.4, 
-                        bloomScale: 1.2, 
-                        brightness: 1.0, 
-                        blur: 4 
-                    });
+                    const bloom = new PIXI.filters.AdvancedBloomFilter({ threshold: 0.4, bloomScale: 1.2, brightness: 1.0, blur: 4 });
                     app.stage.filters = [bloom];
-                } else {
-                    console.warn("AdvancedBloomFilter не найден, запуск без эффекта свечения.");
                 }
             } catch (e) {
-                console.error("Ошибка при инициализации фильтров:", e);
+                console.warn("Filters load warning:", e);
             }
 
             // --- VISUALS: DIGITAL CITY (PARALLAX) ---
@@ -257,27 +246,24 @@
             
             function drawCityGrid(offsetY) {
                 gridGfx.clear();
-                // Horizon line
+                // Perspective Grid
                 const hY = app.screen.height * 0.4;
-                
-                // Vertical Perspective Lines
                 gridGfx.lineStyle(1, 0x004444, 0.3);
                 const w = app.screen.width;
                 const h = app.screen.height;
                 
+                // Vertical lines
                 for(let x=-w; x<=w*2; x+=80) {
-                    gridGfx.moveTo(w/2, hY);
-                    gridGfx.lineTo(x, h);
+                    gridGfx.moveTo(w/2, hY); gridGfx.lineTo(x, h);
                 }
                 
-                // Horizontal Moving Lines
+                // Horizontal lines (moving)
                 const step = 40;
                 const startY = offsetY % step;
-                for(let y=hY; y<=h; y+=step * (1 + (y-hY)/200)) { // Perspective spacing
+                for(let y=hY; y<=h; y+=step * (1 + (y-hY)/200)) {
                     const yy = y + startY;
                     if(yy > h) continue;
-                    const alpha = (y - hY) / (h - hY);
-                    gridGfx.lineStyle(1, 0x00ffcc, alpha * 0.5);
+                    gridGfx.lineStyle(1, 0x00ffcc, (y-hY)/(h-hY)*0.5);
                     gridGfx.moveTo(0, yy); gridGfx.lineTo(w, yy);
                 }
             }
@@ -289,14 +275,8 @@
             gameContainer.addChild(player);
 
             const drone = new PIXI.Graphics();
-            drone.beginFill(0x000000); 
-            drone.lineStyle(2, 0x00ffcc);
-            // Sci-fi drone shape
-            drone.moveTo(0,-20);
-            drone.lineTo(15,10);
-            drone.lineTo(0,5);
-            drone.lineTo(-15,10);
-            drone.closePath();
+            drone.beginFill(0x000000); drone.lineStyle(2, 0x00ffcc);
+            drone.drawPolygon([0,-20, 15,10, 0,5, -15,10]);
             drone.endFill();
             
             // Engine
@@ -314,10 +294,7 @@
                 p.beginFill(0x00ffcc); p.drawRect(0,0,3,3);
                 p.x = player.x + (Math.random()-0.5)*10;
                 p.y = player.y + 15;
-                p.alpha = 1;
-                p.life = 1.0;
-                fxContainer.addChild(p);
-                particles.push(p);
+                p.alpha = 1; fxContainer.addChild(p); particles.push(p);
             }
 
             // --- LOGIC ---
@@ -325,14 +302,12 @@
             let joy = { active: false, dx: 0, dy: 0, sx: 0, sy: 0 };
             
             // Input Handlers
-            const sz = document.getElementById('stick-zone');
-            const st = document.getElementById('stick');
+            const stickZone = document.getElementById('stick-zone');
+            const stick = document.getElementById('stick');
             
-            sz.addEventListener('touchstart', e=>{
-                e.preventDefault(); 
-                joy.active=true; 
-                joy.sx=e.touches[0].clientX; 
-                joy.sy=e.touches[0].clientY;
+            stickZone.addEventListener('touchstart', e=>{
+                e.preventDefault(); joy.active=true; 
+                joy.sx=e.touches[0].clientX; joy.sy=e.touches[0].clientY;
                 if(audioCtx.state === 'suspended') audioCtx.resume();
             });
             
@@ -342,7 +317,7 @@
                 let dist=Math.min(Math.sqrt(dx*dx+dy*dy), 40);
                 let ang=Math.atan2(dy,dx);
                 
-                st.style.transform=`translate(calc(-50% + ${Math.cos(ang)*dist}px), calc(-50% + ${Math.sin(ang)*dist}px))`;
+                stick.style.transform=`translate(calc(-50% + ${Math.cos(ang)*dist}px), calc(-50% + ${Math.sin(ang)*dist}px))`;
                 joy.dx=Math.cos(ang)*(dist/40); 
                 joy.dy=Math.sin(ang)*(dist/40);
                 
@@ -352,7 +327,7 @@
             
             window.addEventListener('touchend', ()=>{
                 joy.active=false; joy.dx=0; joy.dy=0; 
-                st.style.transform=`translate(-50%,-50%)`;
+                stick.style.transform=`translate(-50%,-50%)`;
                 drone.rotation = 0;
             });
 
@@ -385,6 +360,7 @@
             let hackPos = 0, hackDir = 2, hacking = false;
             let hackLoopRef;
             
+            // Экспортируем функцию для HTML кнопки
             window.tryHack = function() {
                 // Success zone: 35% to 65%
                 if(hackPos > 35 && hackPos < 65) {
@@ -421,6 +397,7 @@
             }
 
             // --- ACTIONS ---
+            // Экспортируем для HTML кнопок
             window.action = function(act) {
                 playSound('UI');
                 
